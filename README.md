@@ -4,7 +4,11 @@ A browsable site for the IUPAC-PSK50 programme, published with GitHub Pages.
 Conference: 28 September – 1 October 2026.
 
 **The site is already built.** `docs/` contains a working page with all 26
-tracks, 278 invited speakers and the four-day schedule. Publish it and it works
+tracks, 278 invited speakers and the four-day schedule.
+
+Once talks are scraped, opening a track in **Sessions** lists its speakers in
+running order — split by day and by chair — and clicking a speaker unfolds that
+talk's title, co-authors and abstract in place, without leaving the page. Publish it and it works
 — no scraping, no Actions, no build step.
 
 The optional workflow adds the individual talks (chairs, rooms, times,
@@ -65,7 +69,7 @@ python scripts/gen_data.py && python scripts/build_site.py
 ## Running everything locally
 
 ```bash
-pip install requests beautifulsoup4 lxml openpyxl
+pip install -r requirements.txt
 mkdir -p out && cd out
 python ../scripts/psk50_scrape.py --abstracts --browser-ua
 cd ..
@@ -75,9 +79,36 @@ python scripts/build_talks.py --presentations out/psk50_presentations.csv \
 python scripts/build_site.py
 ```
 
-Opening `docs/index.html` from disk works, but a page on `file://` cannot fetch
-`talks.json`, so the Talks tab offers a drop zone — drop the two CSVs on it.
-Everything else runs offline.
+`build_site.py` bakes `docs/talks.json` into `index.html`, so a copy saved to
+disk is self-contained — times, chairs and abstracts all work with no server.
+Served over http the page also re-fetches `talks.json`, so a fresh scrape shows
+up without anyone rebuilding. If you build before scraping, the Talks tab offers
+a drop zone for the CSVs instead.
+
+## Layout on wide screens
+
+The container grows to about 1470px and then stops. Past that the extra room
+becomes margin rather than a wider column, because prose beyond roughly 75
+characters a line is harder to scan, not easier.
+
+The width is spent on structure instead: from about 1180px an open talk splits
+into a reading column for the abstract and a rail beside it carrying presenter,
+affiliation, type, room, chair, co-authors, abstract number and the source link.
+Below that width the rail drops underneath, separated by a rule.
+
+## Page size
+
+Embedding ~500 talks with abstracts makes `index.html` roughly 1.1 MB, which
+GitHub Pages serves gzipped at around a quarter of that. If you would rather
+keep the first load small, build with:
+
+```bash
+python scripts/build_site.py --no-embed
+```
+
+The site then fetches `talks.json` at startup instead. Same total bytes, two
+requests rather than one — and a copy saved to disk will show only the invited
+speakers, since a `file://` page cannot fetch its neighbours.
 
 ## Failure behaviour
 
@@ -91,11 +122,16 @@ Everything else runs offline.
 
 ## Tests
 
+Every suite states the data state it needs via `tests/harness.js`, so they pass
+both on a clean checkout and after a scrape.
+
 ```bash
 PYTHONPATH=scripts python tests/test_scrape.py    # parsers
 npm install jsdom
 node -e "require('./tests/test_site.js')"         # site behaviour
-node tests/test_autoload.js                       # talks.json loading
+node tests/test_sessions.js                       # track / speaker accordions
+node tests/test_autoload.js                       # fetching talks.json over http
+node tests/test_offline.js                        # saved-to-disk copy
 ```
 
 ## Caveat worth knowing

@@ -144,7 +144,9 @@ def last_offset(html):
 
 def scrape_list(idx, delay):
     html = get(LIST, {"idx": idx})
-    total = TOTAL_RE.search(html)
+    # The count sits inside markup (<strong>155</strong> presentations), so match
+    # the extracted text, not the raw HTML.
+    total = TOTAL_RE.search(body_text(html)[1])
     end = last_offset(html)
     rows, seen = [], set()
     for off in range(0, end + 1, PAGE):

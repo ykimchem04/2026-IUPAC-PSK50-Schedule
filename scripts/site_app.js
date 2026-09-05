@@ -143,42 +143,124 @@ function renderSchedule() {
 }
 
 /* ---------------------------------------------------------------- sessions */
+const byTime = (a, b) =>
+  ((a.date || '9999') + (a.start || '99:99')).localeCompare((b.date || '9999') + (b.start || '99:99'));
+
+const talksOf = code => (talks || []).filter(t => t.session === code).sort(byTime);
+
+// Native <details> rather than hand-rolled state: keyboard and screen readers get
+// the disclosure behaviour for free, and an open panel survives a re-render only
+// if we say so — which is why open state is tracked explicitly below.
+const openTracks = new Set();
+const openTalks = new Set();
+
+function metaRail(t, extra = []) {
+  const rows = [
+    ['Presenter', t.presenter],
+    ['Affiliation', t.affiliation],
+    ['Type', t.type],
+    ...extra,
+    ['Co-authors', t.coauthors],
+    ['Abstract no.', t.abstract_no],
+  ].filter(([, v]) => v);
+  const dl = rows.map(([k, v]) =>
+    `<div><dt>${esc(k)}</dt><dd>${hi(v)}</dd></div>`).join('');
+  const link = t.url
+    ? `<p class="src"><a href="${esc(t.url)}" target="_blank" rel="noopener">On polymer.or.kr</a></p>`
+    : '';
+  return `<aside class="w-meta"><dl>${dl}</dl>${link}</aside>`;
+}
+
+function talkRow(t) {
+  const when = t.start ? `${t.start}–${t.end || ''}`.replace(/–$/, '') : '—';
+  const sub = [t.affiliation, t.type].filter(Boolean).map(esc).join(' · ');
+  const head = `<span class="w-t">${esc(when)}</span>
+    <span class="w-n"><b>${hi(t.presenter || 'Speaker not announced')}</b><i>${sub}</i></span>`;
+  if (!(t.title || t.abstract)) return `<div class="who flat">${head}</div>`;
+  return `<details class="who" data-talk="${esc(t.pid)}"${openTalks.has(t.pid) ? ' open' : ''}>
+    <summary>${head}</summary>
+    <div class="w-body">
+      <div class="w-main">
+        ${t.title ? `<h4>${hi(t.title)}</h4>` : ''}
+        ${t.abstract ? `<p class="abs">${hi(t.abstract)}</p>`
+          : '<p class="abs none">No abstract published for this talk.</p>'}
+      </div>
+      ${metaRail(t, [['Room', t.room], ['Chair', t.chair]])}
+    </div>
+  </details>`;
+}
+
+function trackBody(t) {
+  const ts = talksOf(t.code).filter(k => !query ||
+    [k.title, k.presenter, k.affiliation, k.chair, k.abstract].join(' ')
+      .toLowerCase().includes(query.toLowerCase()));
+
+  if (ts.length) {
+    let lastChair = null, lastDay = null, out = '';
+    for (const k of ts) {
+      if (k.date && k.date !== lastDay) {
+        lastDay = k.date; lastChair = null;
+        out += `<div class="daybar">${esc(dayName(k.date))}${k.room ? ' · ' + esc(k.room) : ''}</div>`;
+      }
+      if (k.chair && k.chair !== lastChair) {
+        lastChair = k.chair;
+        out += `<div class="chairbar">Chair: ${hi(k.chair)}</div>`;
+      }
+      out += talkRow(k);
+    }
+    return out;
+  }
+
+  // No scrape loaded (or nothing matched): fall back to the announced speakers.
+  const ppl = peopleOf(t.code).filter(matches);
+  if (!ppl.length) {
+    return `<div class="who flat"><span class="w-n"><i>${
+      talks ? 'No podium talks in this track yet.'
+            : 'No invited speakers announced for this track yet.'}</i></span></div>`;
+  }
+  return ppl.map(p => `<div class="who flat"><span class="w-n">
+    <b>${hi(p.name)}</b><i>${hi(p.aff)}</i></span></div>`).join('');
+}
+
 function renderSessions() {
   const list = visibleTracks().map(t => {
-    const ppl = peopleOf(t.code).filter(matches);
-    const hit = ppl.length > 0 ||
-      !query || (t.code + ' ' + t.title).toLowerCase().includes(query.toLowerCase());
+    const ts = talksOf(t.code);
+    const hit = !query
+      || (t.code + ' ' + t.title).toLowerCase().includes(query.toLowerCase())
+      || peopleOf(t.code).some(matches)
+      || ts.some(k => [k.title, k.presenter, k.affiliation, k.chair, k.abstract]
+          .join(' ').toLowerCase().includes(query.toLowerCase()));
     if (!hit) return '';
-    const body = ppl.length
-      ? ppl.map(p => `<div class="who"><b>${hi(p.name)}</b><i>${hi(p.aff)}</i></div>`).join('')
-      : `<div class="who"><i>No invited speakers announced for this track yet.</i></div>`;
-    return `<div class="trk" style="--hue:${hue(t.code)}">
-      <div class="trk-h">
-        <div class="trk-code">${esc(t.code)}</div>
-        <p class="trk-t">${hi(t.title)}</p>
-        <div class="trk-meta">
-          <span class="count">${t.n || '—'}</span>
-          <button class="disc" data-open="${t.code}">Speakers</button>
-          <button class="star" data-star="${t.code}" data-on="${plan.has(t.code) ? 1 : 0}"
-            aria-label="Add ${esc(t.code)} to my plan">★</button>
-        </div>
-      </div>
-      <div class="trk-body" data-body="${t.code}" ${query ? '' : 'hidden'}>${body}</div>
-      <a class="src" href="${esc(t.url)}" target="_blank" rel="noopener">Full paper list on polymer.or.kr</a>
-    </div>`;
+    const n = ts.length || t.n;
+    const unit = ts.length ? 'talks' : 'invited';
+    const open = query || openTracks.has(t.code);
+    return `<details class="trk" data-track="${esc(t.code)}" style="--hue:${hue(t.code)}"${open ? ' open' : ''}>
+      <summary class="trk-h">
+        <span class="trk-code">${esc(t.code)}</span>
+        <span class="trk-t">${hi(t.title)}</span>
+        <span class="trk-meta"><span class="count">${n || '—'} ${n ? unit : ''}</span>
+          <button class="star" data-star="${esc(t.code)}" data-on="${plan.has(t.code) ? 1 : 0}"
+            aria-label="Add ${esc(t.code)} to my plan">★</button></span>
+      </summary>
+      <div class="trk-body">${trackBody(t)}</div>
+    </details>`;
   }).join('');
 
   $('#v-sessions').innerHTML = `
     <h2 class="sec">26 tracks</h2>
-    <p class="lede">Star the tracks you care about, then switch on <b>My plan</b> to
-      narrow every view down to them.</p>
+    <p class="lede">Open a track for its running order. ${talks
+      ? 'Each speaker opens to the talk itself.'
+      : 'Talks appear here once a scrape has run; for now these are the announced invited speakers.'}
+      Star what you care about, then switch on <b>My plan</b>.</p>
     ${list || `<p class="empty">Nothing matches “${esc(query)}”. Try a lab, a country or a topic.</p>`}`;
 
-  $$('[data-open]').forEach(b => b.onclick = () => {
-    const body = $(`[data-body="${b.dataset.open}"]`);
-    body.hidden = !body.hidden;
-    b.textContent = body.hidden ? 'Speakers' : 'Hide';
-  });
+  // Remember what was open, so starring or searching does not collapse the page.
+  $$('#v-sessions [data-track]').forEach(d => d.addEventListener('toggle', () => {
+    d.open ? openTracks.add(d.dataset.track) : openTracks.delete(d.dataset.track);
+  }));
+  $$('#v-sessions [data-talk]').forEach(d => d.addEventListener('toggle', () => {
+    d.open ? openTalks.add(d.dataset.talk) : openTalks.delete(d.dataset.talk);
+  }));
   bindStars();
 }
 
@@ -262,7 +344,7 @@ function parseCSV(text) {
     .map(r => Object.fromEntries(head.map((h, i) => [h.trim(), (r[i] || '').trim()])));
 }
 
-const dayName = d => d
+var dayName = d => d
   ? new Date(d + 'T00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
   : 'Day not announced';
 
@@ -312,10 +394,10 @@ function renderTalks() {
     if (talkGroup === 'day') {
       const [d, room] = k.split('||');
       code = [...new Set(list.map(t => t.session))][0];
-      head = `${dayName(d)}<span class="count">${room || 'room not announced'} · ${list.length}</span>`;
+      head = `${dayName(d)} <span class="count">${room || 'room not announced'} · ${list.length}</span>`;
     } else {
       code = k;
-      head = `${esc(k)}${TRACK[k] ? ' — ' + esc(TRACK[k].title) : ''}<span class="count">${list.length}</span>`;
+      head = `${esc(k)}${TRACK[k] ? ' — ' + esc(TRACK[k].title) : ''} <span class="count">${list.length}</span>`;
     }
     let lastChair = null;
     const body = list.map(t => {
@@ -325,12 +407,17 @@ function renderTalks() {
         chairRow = `<div class="chairbar">Chair: ${hi(t.chair)}</div>`;
       }
       const when = t.start ? `${t.start}–${t.end}` : '—';
+      const extra = talkGroup === 'session' ? [['Room', t.room], ['Chair', t.chair]] : [];
       return chairRow + `<div class="talk" style="--hue:${hue(t.session)}">
         <div class="c">${esc(when)}</div>
-        <div class="ti">${hi(t.title)}
-          <i>${hi(t.presenter || '')}${t.affiliation ? ' · ' + hi(t.affiliation) : ''}
-             ${t.type ? '· ' + esc(t.type) : ''}${talkGroup === 'session' && t.room ? ' · ' + esc(t.room) : ''}</i>
-          ${t.abstract ? `<details><summary>Abstract</summary><p>${hi(t.abstract)}</p></details>` : ''}
+        <div class="ti">
+          <div class="t-head">${hi(t.title)}
+            <i>${hi(t.presenter || '')}${t.affiliation ? ' · ' + hi(t.affiliation) : ''}
+               ${t.type ? '· ' + esc(t.type) : ''}${talkGroup === 'session' && t.room ? ' · ' + esc(t.room) : ''}</i>
+          </div>
+          ${t.abstract ? `<details data-talk="${esc(t.pid)}"><summary>Abstract</summary>
+            <div class="w-body"><div class="w-main"><p class="abs">${hi(t.abstract)}</p></div>
+              ${metaRail(t, extra)}</div></details>` : ''}
         </div></div>`;
     }).join('');
     return `<div class="day"><h3>${head}</h3>${body}</div>`;
@@ -382,7 +469,9 @@ function wireDrop() {
 
 /* ---------------------------------------------------------------- plan */
 function bindStars() {
-  $$('[data-star]').forEach(b => b.onclick = () => {
+  $$('[data-star]').forEach(b => b.onclick = ev => {
+    ev.preventDefault();
+    ev.stopPropagation();
     const c = b.dataset.star;
     plan.has(c) ? plan.delete(c) : plan.add(c);
     b.dataset.on = plan.has(c) ? 1 : 0;
@@ -429,8 +518,23 @@ function show(v) {
 // tab fills itself. Opened from disk there is no fetch to make, and the drop zone
 // stays as the way in.
 async function loadTalks() {
-  if (!/^https?:$/.test(location.protocol)) { loadState = 'none'; return; }
-  loadState = 'loading';
+  // Embedded at build time — this is what makes the page work from disk, where
+  // browsers refuse to fetch a sibling file.
+  const embedded = (typeof TALKS !== 'undefined' && TALKS) ? TALKS : null;
+  if (embedded && Array.isArray(embedded.talks) && embedded.talks.length) {
+    talks = embedded.talks;
+    if (embedded.generated) $('#gen').textContent = 'Talks updated ' + embedded.generated;
+    loadState = 'ok';
+    if (view === 'talks' || view === 'sessions') renderAll();
+  }
+
+  // Served over http, also ask for the current file, so a re-scrape shows up
+  // without anyone rebuilding the page.
+  if (!/^https?:$/.test(location.protocol)) {
+    if (!talks) loadState = 'none';
+    return;
+  }
+  if (!talks) loadState = 'loading';
   try {
     const res = await fetch('talks.json', { cache: 'no-cache' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -441,10 +545,10 @@ async function loadTalks() {
     if (body.generated) $('#gen').textContent = 'Talks updated ' + body.generated;
     loadState = 'ok';
   } catch (e) {
-    console.warn('talks.json not loaded:', e.message);
-    loadState = 'none';
+    console.warn('talks.json not fetched:', e.message);
+    if (!talks) loadState = 'none';
   }
-  if (view === 'talks') renderTalks();
+  if (view === 'talks' || view === 'sessions') renderAll();
 }
 
 function init() {

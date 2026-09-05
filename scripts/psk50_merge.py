@@ -12,7 +12,7 @@ Reads psk50_presentations.csv (stage 1) and, if present, psk50_abstracts.csv
   Rooms     which track occupies which room on which day
 """
 import argparse, csv, os, sys, collections
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
@@ -66,8 +66,6 @@ def main():
     ap.add_argument("--abstracts", default="psk50_abstracts.csv")
     args = ap.parse_args()
 
-    if not os.path.exists(args.workbook):
-        sys.exit(f"{args.workbook} not found")
     talks = load(args.presentations)
     if not talks:
         sys.exit(f"{args.presentations} not found or empty — run psk50_scrape.py first")
@@ -97,7 +95,13 @@ def main():
             occ[(t["date"], t["room"])].add(t["session"])
     rooms = sorted([[d, room, ", ".join(sorted(s))] for (d, room), s in occ.items()])
 
-    wb = load_workbook(args.workbook)
+    # Create the workbook on first run rather than demanding one already exists.
+    if os.path.exists(args.workbook):
+        wb = load_workbook(args.workbook)
+    else:
+        wb = Workbook()
+        wb.remove(wb.active)
+        os.makedirs(os.path.dirname(args.workbook) or ".", exist_ok=True)
     sheet(wb, "Talks", TALK_COLS, talks, TALK_W)
     sheet(wb, "Chairs", ["date", "room", "track", "chair", "from", "to", "talks"],
           chairs, [11, 12, 9, 24, 8, 8, 8])

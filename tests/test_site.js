@@ -1,7 +1,10 @@
 const fs = require('fs');
 const { JSDOM } = require('jsdom');
 
-const html = fs.readFileSync('docs/index.html', 'utf8');
+const { withTalks } = require('./harness.js');
+// This suite is about the page with no scrape loaded, so say so rather than
+// depending on whether docs/talks.json happened to exist at build time.
+const html = withTalks(null);
 const dom = new JSDOM(html, { runScripts: 'dangerously', pretendToBeVisual: true });
 const { window } = dom;
 const doc = window.document;
@@ -36,20 +39,28 @@ ok(segs[5].dataset.cur === '1', 'clicking a block marks it current');
 console.log('\n[sessions]');
 click($$('.tab').find(t => t.dataset.v === 'sessions'));
 ok($$('#v-sessions .trk').length === 26, '26 tracks listed');
-const s1 = $('[data-body="S1"]');
-ok(s1.hidden, 'speaker rosters start collapsed');
-click($('[data-open="S1"]'));
-ok(!s1.hidden, 'Speakers button expands the roster');
-ok($$('[data-body="S1"] .who').length === 20, 'S1 shows its 20 invited speakers');
-ok($('[data-body="IDS3"]').textContent.includes('No invited speakers announced'),
+const s1 = $('[data-track="S1"]');
+ok(!s1.open, 'tracks start collapsed');
+// jsdom does not implement the summary-click default action; setting .open is
+// exactly what the browser does, and the toggle event is what the app listens for.
+const openDetails = d => { d.open = true; d.dispatchEvent(new window.Event('toggle')); };
+openDetails(s1);
+ok(s1.open, 'a track opens');
+ok(s1.querySelectorAll('.who').length === 20,
+   'with no scrape loaded, S1 falls back to its 20 invited speakers');
+ok(s1.querySelector('.who').classList.contains('flat'),
+   'invited-speaker rows are plain, not disclosures — there is no talk to unfold');
+ok($('[data-track="IDS3"] .trk-body').textContent.includes('No invited speakers announced'),
    'IDS3 (zero speakers) says so rather than rendering blank');
 
 console.log('\n[plan]');
 click($('[data-star="S1"]'));
 click($('[data-star="S10"]'));
+ok(!$('[data-track="S10"]').open, 'starring a track does not force it open');
 ok($('#planN').textContent === '2', 'starring two tracks updates the counter');
 click($('#planToggle'));
 ok($$('#v-sessions .trk').length === 2, 'My plan narrows Sessions to the starred tracks');
+ok($('[data-track="S1"]').open, 'the track left open stays open through the re-render');
 click($$('.tab').find(t => t.dataset.v === 'speakers'));
 const planned = $$('#v-speakers tbody tr').length;
 ok(planned === 35, `My plan narrows Speakers to S1+S10 = 35 people (got ${planned})`);

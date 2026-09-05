@@ -1,7 +1,11 @@
 const fs = require('fs');
 const { JSDOM } = require('jsdom');
-const html = fs.readFileSync('docs/index.html', 'utf8');
-const talksJson = fs.readFileSync('docs/talks.json', 'utf8');
+const { withTalks } = require('./harness.js');
+// Embedding is covered by test_offline.js; here the subject is the fetch path,
+// so start from a page with nothing embedded.
+const html = withTalks(null);
+const { FIXTURE } = require('./harness.js');
+const talksJson = JSON.stringify(FIXTURE);
 // derive expectations from the fixture rather than hard-coding counts
 const fixture = JSON.parse(talksJson).talks;
 const nTalks = fixture.length;
@@ -54,7 +58,10 @@ const settle = () => new Promise(r => setTimeout(r, 60));
   await settle();
   $$('.tab').find(t => t.dataset.v === 'talks').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
   ok(w.document.querySelector('#drop'), '404 falls back to the drop zone, not a blank tab');
-  ok(!w.document.body.textContent.includes('undefined'), 'no undefined leaks into the page');
+  // body.textContent includes the inlined <script> source, which legitimately
+  // contains the word "undefined" — check the rendered views instead.
+  const rendered = [...w.document.querySelectorAll('.view')].map(v => v.textContent).join(' ');
+  ok(!rendered.includes('undefined'), 'no undefined leaks into any rendered view');
 
   console.log('\n[schedule still works without talks]');
   ok([...w.document.querySelectorAll('#v-schedule .seg')].length === 39,
