@@ -1,7 +1,12 @@
 const fs = require('fs');
 const { JSDOM } = require('jsdom');
-const html = fs.readFileSync('site/index.html', 'utf8');
-const talksJson = fs.readFileSync('site/talks.json', 'utf8');
+const html = fs.readFileSync('docs/index.html', 'utf8');
+const talksJson = fs.readFileSync('docs/talks.json', 'utf8');
+// derive expectations from the fixture rather than hard-coding counts
+const fixture = JSON.parse(talksJson).talks;
+const nTalks = fixture.length;
+const nChairs = new Set(fixture.map(t => t.chair).filter(Boolean)).size;
+const nAbs = fixture.filter(t => t.abstract).length;
 const ok = (c, m) => { if (!c) throw new Error('FAIL: ' + m); console.log('  ok  ' + m); };
 
 function boot({ url, fetchImpl }) {
@@ -26,11 +31,12 @@ const settle = () => new Promise(r => setTimeout(r, 60));
   const $ = s => w.document.querySelector(s);
   const $$ = s => [...w.document.querySelectorAll(s)];
   $$('.tab').find(t => t.dataset.v === 'talks').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
-  ok($$('#v-talks .talk').length === 10, '10 talks rendered with no user action');
+  ok(nTalks > 0, `fixture has ${nTalks} talks to render`);
+  ok($$('#v-talks .talk').length === nTalks, `all ${nTalks} talks rendered with no user action`);
   ok(!$('#drop'), 'drop zone not shown when data loaded itself');
   ok($('#v-talks').textContent.includes('Room 101'), 'room from the scrape shown');
-  ok($$('#v-talks .chairbar').length === 3, 'three chair stints');
-  ok($('#v-talks details'), 'the one abstract is expandable');
+  ok($$('#v-talks .chairbar').length === nChairs, `${nChairs} chair stints shown`);
+  ok($$('#v-talks details').length === nAbs, `${nAbs} abstract(s) expandable`);
   ok($('#gen').textContent.includes('Talks updated'), 'footer states when talks were scraped');
 
   console.log('\n[opened from disk — file://]');

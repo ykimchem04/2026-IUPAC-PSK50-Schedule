@@ -97,7 +97,7 @@ data = {
     },
     "tracks": tracks, "people": people, "days": days,
 }
-out = ROOT / "site" / "data.json"
+out = ROOT / "docs" / "data.json"
 out.parent.mkdir(exist_ok=True)
 out.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 

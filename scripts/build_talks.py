@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CSV -> site/talks.json
+CSV -> docs/talks.json
 
     python scripts/build_talks.py
 
@@ -29,7 +29,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--presentations", default="psk50_presentations.csv")
     ap.add_argument("--abstracts", default="psk50_abstracts.csv")
-    ap.add_argument("--out", default="site/talks.json")
+    ap.add_argument("--out", default="docs/talks.json")
     ap.add_argument("--allow-empty", action="store_true")
     args = ap.parse_args()
 
