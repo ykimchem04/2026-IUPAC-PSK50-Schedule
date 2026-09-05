@@ -1,0 +1,7 @@
+# Scraper
+requests>=2.31
+beautifulsoup4>=4.12
+lxml>=5.0
+
+# Spreadsheet output
+openpyxl>=3.1
