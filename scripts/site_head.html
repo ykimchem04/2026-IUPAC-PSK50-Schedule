@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IUPAC-PSK50 — program</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EDEFEC; --card:#F6F7F5; --ink:#131A17; --graphite:#5C6863;
+  --rule:#C9CFC9; --rule-soft:#DDE1DC; --flag:#B01048;
+  --sans:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --serif:'Source Serif 4',Georgia,'Times New Roman',serif;
+  --gutter:5.5rem;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--sans); font-size:15px; line-height:1.5;
+  font-variant-numeric:tabular-nums;
+}
+.wrap{max-width:78rem;margin:0 auto;padding:0 1.5rem}
+
+/* ---------- masthead ---------- */
+header.top{border-bottom:1px solid var(--ink);padding:1.6rem 0 1.1rem}
+.brand{display:flex;flex-wrap:wrap;align-items:baseline;gap:.55rem 1.1rem}
+.brand h1{
+  font-size:1.9rem;line-height:1;margin:0;font-weight:700;
+  letter-spacing:-.022em;
+}
+.brand .dates{font-size:.95rem;color:var(--graphite);font-weight:500}
+.brand .sub{
+  flex-basis:100%;font-family:var(--serif);font-size:1.02rem;
+  color:var(--graphite);margin-top:.15rem;max-width:52ch;
+}
+
+/* ---------- nav ---------- */
+nav.tabs{
+  position:sticky;top:0;z-index:20;background:var(--paper);
+  border-bottom:1px solid var(--rule);
+}
+.tabs-in{display:flex;flex-wrap:wrap;gap:.3rem;align-items:center;padding:.45rem 0}
+.tab{
+  font:inherit;font-weight:600;font-size:.92rem;
+  background:none;border:0;border-bottom:2px solid transparent;
+  color:var(--graphite);padding:.5rem .7rem;cursor:pointer;border-radius:2px;
+}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.tabs-in .spacer{flex:1}
+.search{
+  font:inherit;font-size:.9rem;background:var(--card);
+  border:1px solid var(--rule);border-radius:2px;
+  padding:.42rem .6rem;width:15rem;max-width:45vw;color:var(--ink);
+}
+.search::placeholder{color:var(--graphite)}
+.planbtn{
+  font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;
+  background:none;border:1px solid var(--rule);border-radius:2px;
+  padding:.42rem .65rem;color:var(--graphite);
+}
+.planbtn:hover{border-color:var(--ink);color:var(--ink)}
+.planbtn[data-on="1"]{border-color:var(--flag);color:var(--flag)}
+
+:focus-visible{outline:2px solid var(--flag);outline-offset:2px}
+
+/* ---------- shared ---------- */
+main{padding:1.9rem 0 5rem}
+.view[hidden]{display:none}
+h2.sec{
+  font-size:1.15rem;font-weight:700;letter-spacing:-.012em;margin:0 0 .2rem;
+}
+.lede{
+  font-family:var(--serif);color:var(--graphite);max-width:62ch;
+  margin:0 0 1.6rem;font-size:1rem;line-height:1.6;
+}
+.note{
+  font-family:var(--serif);font-size:.92rem;color:var(--graphite);
+  border-left:2px solid var(--rule);padding:.35rem 0 .35rem .85rem;
+  max-width:62ch;margin:1.1rem 0;line-height:1.55;
+}
+.empty{
+  font-family:var(--serif);color:var(--graphite);padding:2.5rem 0;
+  font-size:1.02rem;max-width:52ch;
+}
+.count{color:var(--graphite);font-weight:500;font-size:.88rem}
+
+/* ---------- schedule: the day chains ---------- */
+.chains{margin:0 0 2.4rem}
+.chain{
+  display:grid;grid-template-columns:var(--gutter) 1fr;
+  align-items:center;gap:0 1rem;padding:.5rem 0;
+}
+.chain + .chain{border-top:1px solid var(--rule-soft)}
+.chain .lab{
+  text-align:right;font-weight:600;font-size:.88rem;line-height:1.25;
+}
+.chain .lab i{display:block;font-style:normal;color:var(--graphite);font-weight:400}
+.track{position:relative}
+.seg{
+  position:absolute;border:0;padding:0;cursor:pointer;
+  border-radius:1px;overflow:hidden;
+  font:inherit;font-size:.72rem;font-weight:600;color:#fff;
+  text-align:left;white-space:nowrap;
+}
+.seg span{display:block;padding:0 .38rem;line-height:16px}
+.seg:hover{filter:brightness(1.14)}
+.seg[data-cur="1"]{box-shadow:inset 0 0 0 2px var(--ink)}
+.t-Plenary{background:#1E3A32}
+.t-Parallel{background:#3E6B5C}
+.t-Session{background:#54806F}
+.t-Poster{background:#7C9A8C}
+.t-Ceremony{background:#2C4A5E}
+.t-Social{background:#8A6A3E}
+.t-Meeting{background:#6E7B72}
+.t-Break,.t-Admin{background:#D5DAD4}
+.seg.t-Break,.seg.t-Admin{color:var(--graphite)}
+.axis{
+  display:grid;grid-template-columns:var(--gutter) 1fr;gap:0 1rem;
+  margin-top:.3rem;
+}
+.axis .marks{position:relative;height:1.1rem}
+.axis b{
+  position:absolute;font-weight:500;font-size:.72rem;color:var(--graphite);
+  transform:translateX(-50%);
+}
+.legend{
+  display:flex;flex-wrap:wrap;gap:.25rem 1.1rem;margin-top:.9rem;
+  font-size:.78rem;color:var(--graphite);
+}
+.legend .sw{display:inline-block;width:.7rem;height:.7rem;border-radius:1px;margin-right:.35rem;vertical-align:-1px}
+
+/* ---------- schedule: expanded rows ---------- */
+.day{margin:0 0 2.2rem}
+.day h3{
+  font-size:1rem;font-weight:700;margin:0 0 .55rem;
+  padding-bottom:.3rem;border-bottom:1px solid var(--ink);
+}
+.row{
+  display:grid;grid-template-columns:var(--gutter) 1fr auto;
+  gap:0 1rem;padding:.52rem 0;border-bottom:1px solid var(--rule-soft);
+  align-items:baseline;
+}
+.row.quiet{color:var(--graphite)}
+.row .t{text-align:right;font-size:.86rem;font-weight:600;white-space:nowrap}
+.row.quiet .t{font-weight:400}
+.row .n{font-family:var(--serif);font-size:1.04rem;line-height:1.35}
+.row.quiet .n{font-size:.94rem}
+.row .r{font-size:.82rem;color:var(--graphite);white-space:nowrap}
+.row .n em{
+  display:block;font-style:normal;font-family:var(--sans);
+  font-size:.8rem;color:var(--graphite);margin-top:.12rem;max-width:56ch;
+}
+
+/* ---------- sessions ---------- */
+.tracklist{margin:0}
+.trk{border-top:1px solid var(--rule-soft);padding:.85rem 0 .95rem}
+.trk:first-child{border-top:1px solid var(--ink)}
+.trk-h{display:grid;grid-template-columns:4.2rem 1fr auto;gap:0 1rem;align-items:baseline}
+.trk-code{font-weight:700;font-size:.95rem;position:relative;padding-left:.7rem}
+.trk-code::before{
+  content:"";position:absolute;left:0;top:.12em;bottom:.12em;width:3px;
+  background:var(--hue);border-radius:2px;
+}
+.trk-t{
+  font-family:var(--serif);font-size:1.1rem;line-height:1.35;
+  margin:0;max-width:60ch;font-weight:400;
+}
+.trk-meta{display:flex;align-items:center;gap:.55rem;white-space:nowrap}
+.star{
+  font:inherit;font-size:1.05rem;line-height:1;background:none;border:0;
+  cursor:pointer;color:var(--rule);padding:.1rem .2rem;border-radius:2px;
+}
+.star:hover{color:var(--graphite)}
+.star[data-on="1"]{color:var(--flag)}
+.disc{
+  font:inherit;font-size:.8rem;font-weight:600;color:var(--graphite);
+  background:none;border:1px solid var(--rule);border-radius:2px;
+  padding:.2rem .5rem;cursor:pointer;
+}
+.disc:hover{border-color:var(--ink);color:var(--ink)}
+.trk-body{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(17rem,1fr));
+  gap:.15rem 1.6rem;margin:.8rem 0 .15rem;padding-left:5.2rem;
+}
+.trk-body[hidden]{display:none}
+.who{
+  font-family:var(--serif);font-size:.98rem;line-height:1.4;
+  padding:.24rem 0;border-bottom:1px solid var(--rule-soft);
+}
+.who b{font-weight:600}
+.who i{
+  display:block;font-style:normal;font-family:var(--sans);
+  font-size:.79rem;color:var(--graphite);line-height:1.35;
+}
+.trk a.src{font-size:.8rem;color:var(--graphite);padding-left:5.2rem;display:inline-block;margin-top:.5rem}
+.trk a.src:hover{color:var(--ink)}
+
+/* ---------- speakers ---------- */
+.filters{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 1.1rem}
+select.f{
+  font:inherit;font-size:.86rem;background:var(--card);color:var(--ink);
+  border:1px solid var(--rule);border-radius:2px;padding:.38rem .5rem;
+}
+table.people{width:100%;border-collapse:collapse}
+table.people th{
+  text-align:left;font-size:.8rem;font-weight:600;color:var(--graphite);
+  padding:.4rem .6rem .4rem 0;border-bottom:1px solid var(--ink);
+  position:sticky;top:2.85rem;background:var(--paper);cursor:pointer;
+  white-space:nowrap;
+}
+table.people th:hover{color:var(--ink)}
+table.people th[data-dir]::after{content:"↑";margin-left:.3rem;font-size:.75rem}
+table.people th[data-dir="desc"]::after{content:"↓"}
+table.people td{
+  padding:.42rem .6rem .42rem 0;border-bottom:1px solid var(--rule-soft);
+  vertical-align:baseline;font-size:.9rem;
+}
+table.people td.nm{font-family:var(--serif);font-size:1rem;white-space:nowrap}
+table.people td.af{color:var(--graphite);max-width:30rem}
+table.people td.se{white-space:nowrap}
+.pill{
+  display:inline-block;font-size:.76rem;font-weight:600;
+  padding:.08rem .4rem;border-radius:2px;margin-right:.25rem;
+  border:1px solid var(--hue);color:var(--hue);
+}
+mark{background:#F2E28A;color:inherit;padding:0 .05em}
+
+/* ---------- talks (loaded from CSV) ---------- */
+.drop{
+  border:1px dashed var(--rule);border-radius:2px;padding:1.6rem;
+  max-width:46rem;background:var(--card);
+}
+.drop.over{border-color:var(--flag);background:#F0EAEC}
+.drop p{margin:0 0 .7rem;font-family:var(--serif);color:var(--graphite);max-width:56ch;line-height:1.6}
+.drop code{font-family:var(--sans);font-weight:600;color:var(--ink);font-size:.88rem}
+.drop input[type=file]{font:inherit;font-size:.86rem}
+.talk{
+  display:grid;grid-template-columns:5.4rem 1fr;gap:0 1rem;
+  padding:.55rem 0;border-bottom:1px solid var(--rule-soft);align-items:baseline;
+}
+.talk .c{font-weight:700;font-size:.86rem;position:relative;padding-left:.7rem}
+.talk .c::before{
+  content:"";position:absolute;left:0;top:.15em;bottom:.15em;width:3px;
+  background:var(--hue);border-radius:2px;
+}
+.talk .ti{font-family:var(--serif);font-size:1.02rem;line-height:1.4;max-width:66ch}
+.chairbar{
+  font-size:.8rem;font-weight:600;color:var(--graphite);
+  padding:.55rem 0 .2rem;border-bottom:1px solid var(--rule);margin-bottom:.1rem;
+}
+.talk details{margin-top:.3rem}
+.talk summary{
+  font-family:var(--sans);font-size:.79rem;font-weight:600;color:var(--graphite);
+  cursor:pointer;list-style:none;
+}
+.talk summary::before{content:"+ ";}
+.talk details[open] summary::before{content:"– ";}
+.talk summary:hover{color:var(--ink)}
+.talk details p{
+  font-family:var(--serif);font-size:.94rem;line-height:1.6;color:var(--graphite);
+  max-width:64ch;margin:.4rem 0 .2rem;
+}
+.talk .c{white-space:nowrap}
+.talk .ti i{
+  display:block;font-style:normal;font-family:var(--sans);font-size:.79rem;
+  color:var(--graphite);margin-top:.14rem;
+}
+
+/* ---------- footer ---------- */
+footer{
+  border-top:1px solid var(--rule);margin-top:2rem;padding:1.1rem 0 2.5rem;
+  font-size:.82rem;color:var(--graphite);
+}
+footer p{margin:.25rem 0;max-width:70ch;line-height:1.55}
+footer a{color:var(--graphite)}
+
+@media (max-width:640px){
+  :root{--gutter:3.9rem}
+  .brand h1{font-size:1.45rem}
+  .trk-h{grid-template-columns:3.4rem 1fr auto}
+  .trk-body,.trk a.src{padding-left:0}
+  .row{grid-template-columns:var(--gutter) 1fr;}
+  .row .r{grid-column:2;font-size:.78rem}
+  table.people td.af{max-width:none}
+  table.people th{top:4.6rem}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media print{
+  nav.tabs,.planbtn,.search,.star,.disc,.drop,.filters{display:none!important}
+  body{background:#fff;font-size:11px}
+  .view[hidden]{display:block!important}
+  .trk-body[hidden]{display:grid!important}
+  .seg{color:#000}
+}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <div class="brand">
+    <h1>IUPAC-PSK50</h1>
+    <span class="dates" id="mDates"></span>
+    <span class="sub" id="mSub"></span>
+  </div>
+</div></header>
+
+<nav class="tabs"><div class="wrap tabs-in" role="tablist">
+  <button class="tab" role="tab" data-v="schedule" aria-selected="true">Schedule</button>
+  <button class="tab" role="tab" data-v="sessions" aria-selected="false">Sessions</button>
+  <button class="tab" role="tab" data-v="speakers" aria-selected="false">Speakers</button>
+  <button class="tab" role="tab" data-v="talks" aria-selected="false">Talks</button>
+  <span class="spacer"></span>
+  <input class="search" id="q" type="search" placeholder="Search names, topics, labs" aria-label="Search">
+  <button class="planbtn" id="planToggle" data-on="0">My plan <span id="planN">0</span></button>
+  <button class="planbtn" id="planSave">Save plan</button>
+</div></nav>
+
+<main class="wrap">
+  <section class="view" id="v-schedule"></section>
+  <section class="view" id="v-sessions" hidden></section>
+  <section class="view" id="v-speakers" hidden></section>
+  <section class="view" id="v-talks" hidden></section>
+</main>
+
+<footer><div class="wrap">
+  <p id="fSrc"></p>
+  <p id="gen"></p>
+  <p>Session chairs, per-talk times and room assignments were not published at the time this
+     was built. Nothing here is inferred — blank means the organisers have not announced it.</p>
+</div></footer>
