@@ -1,0 +1,117 @@
+name: Update talks
+
+# The site itself already lives in docs/ and is served by GitHub Pages straight
+# from the branch — it does not need this workflow to exist. All this does is
+# refresh docs/talks.json with a new scrape. Pages republishes on its own once
+# the commit lands, so there is no deploy step and no Pages permission to grant.
+
+on:
+  workflow_dispatch:
+    inputs:
+      abstracts:
+        description: Also fetch abstracts (slow - one request per talk)
+        type: boolean
+        default: true
+      tracks:
+        description: 'Track idx values, space separated. Blank = all 26.'
+        type: string
+        default: ''
+  schedule:
+    # Mondays 03:00 UTC. The programme changes in bursts, not hourly, and this
+    # points at someone else's server - do not make it more frequent.
+    - cron: '0 3 * * 1'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: psk50-scrape
+  cancel-in-progress: false      # let a scrape finish; cancelling wastes the fetches
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - run: pip install requests beautifulsoup4 lxml openpyxl
+
+      - name: Unit tests
+        env:
+          PYTHONPATH: scripts
+        run: python tests/test_scrape.py
+
+      # Abstracts already committed under out/ are reused, so a rerun only
+      # fetches talks added since last time.
+      #
+      # Flags are assembled in bash, not in a ${{ }} expression: on scheduled
+      # runs `inputs.abstracts` is null, and GitHub's loose equality makes
+      # `null == false` true - which would silently turn abstracts off on every
+      # unattended run, the one place they matter most.
+      - name: Scrape programme
+        id: scrape
+        continue-on-error: true
+        env:
+          ABSTRACTS: ${{ inputs.abstracts }}
+          TRACKS: ${{ inputs.tracks }}
+        run: |
+          mkdir -p out && cd out
+          args=(--browser-ua --delay 1.0)
+          [ "$ABSTRACTS" = "false" ] || args+=(--abstracts)
+          [ -n "$TRACKS" ] && args+=(--idx $TRACKS)
+          echo "running: psk50_scrape.py ${args[*]}"
+          python ../scripts/psk50_scrape.py "${args[@]}"
+
+      - name: Report
+        run: |
+          n=0
+          [ -f out/psk50_presentations.csv ] && n=$(($(wc -l < out/psk50_presentations.csv) - 1))
+          {
+            echo "### Scrape result"
+            echo "- podium talks: **$n**"
+            [ -f out/psk50_abstracts.csv ] && \
+              echo "- abstracts: **$(($(wc -l < out/psk50_abstracts.csv) - 1))**"
+            [ "${{ steps.scrape.outcome }}" != "success" ] && \
+              echo "- :warning: the scraper exited non-zero; keeping whatever it wrote"
+            echo ""
+            echo "Sanity check: 26 tracks should give a few hundred podium talks."
+            echo "A 0 here means the parser missed - open out/psk50_presentations.csv."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # A failed scrape must not blank the site: build_talks.py keeps the
+      # existing docs/talks.json rather than writing an empty one.
+      - name: Rebuild site
+        run: |
+          python scripts/gen_data.py
+          python scripts/build_talks.py \
+            --presentations out/psk50_presentations.csv \
+            --abstracts out/psk50_abstracts.csv \
+            --out docs/talks.json
+          python scripts/build_site.py
+
+      - name: Spreadsheet
+        continue-on-error: true
+        run: |
+          python scripts/psk50_merge.py \
+            --workbook docs/PSK50_program_data.xlsx \
+            --presentations out/psk50_presentations.csv \
+            --abstracts out/psk50_abstracts.csv
+
+      - name: Commit
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add out/ docs/
+          if git diff --staged --quiet; then
+            echo "nothing changed" >> "$GITHUB_STEP_SUMMARY"
+          else
+            git commit -m "Update talks from polymer.or.kr"
+            git push
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Pushed. Pages republishes in a minute or two." >> "$GITHUB_STEP_SUMMARY"
+          fi
