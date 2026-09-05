@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IUPAC-PSK50 — program</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EDEFEC; --card:#F6F7F5; --ink:#131A17; --graphite:#5C6863;
+  --rule:#C9CFC9; --rule-soft:#DDE1DC; --flag:#B01048;
+  --sans:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --serif:'Source Serif 4',Georgia,'Times New Roman',serif;
+  --gutter:5.5rem;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--sans); font-size:15px; line-height:1.5;
+  font-variant-numeric:tabular-nums;
+}
+.wrap{max-width:78rem;margin:0 auto;padding:0 1.5rem}
+
+/* ---------- masthead ---------- */
+header.top{border-bottom:1px solid var(--ink);padding:1.6rem 0 1.1rem}
+.brand{display:flex;flex-wrap:wrap;align-items:baseline;gap:.55rem 1.1rem}
+.brand h1{
+  font-size:1.9rem;line-height:1;margin:0;font-weight:700;
+  letter-spacing:-.022em;
+}
+.brand .dates{font-size:.95rem;color:var(--graphite);font-weight:500}
+.brand .sub{
+  flex-basis:100%;font-family:var(--serif);font-size:1.02rem;
+  color:var(--graphite);margin-top:.15rem;max-width:52ch;
+}
+
+/* ---------- nav ---------- */
+nav.tabs{
+  position:sticky;top:0;z-index:20;background:var(--paper);
+  border-bottom:1px solid var(--rule);
+}
+.tabs-in{display:flex;flex-wrap:wrap;gap:.3rem;align-items:center;padding:.45rem 0}
+.tab{
+  font:inherit;font-weight:600;font-size:.92rem;
+  background:none;border:0;border-bottom:2px solid transparent;
+  color:var(--graphite);padding:.5rem .7rem;cursor:pointer;border-radius:2px;
+}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.tabs-in .spacer{flex:1}
+.search{
+  font:inherit;font-size:.9rem;background:var(--card);
+  border:1px solid var(--rule);border-radius:2px;
+  padding:.42rem .6rem;width:15rem;max-width:45vw;color:var(--ink);
+}
+.search::placeholder{color:var(--graphite)}
+.planbtn{
+  font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;
+  background:none;border:1px solid var(--rule);border-radius:2px;
+  padding:.42rem .65rem;color:var(--graphite);
+}
+.planbtn:hover{border-color:var(--ink);color:var(--ink)}
+.planbtn[data-on="1"]{border-color:var(--flag);color:var(--flag)}
+
+:focus-visible{outline:2px solid var(--flag);outline-offset:2px}
+
+/* ---------- shared ---------- */
+main{padding:1.9rem 0 5rem}
+.view[hidden]{display:none}
+h2.sec{
+  font-size:1.15rem;font-weight:700;letter-spacing:-.012em;margin:0 0 .2rem;
+}
+.lede{
+  font-family:var(--serif);color:var(--graphite);max-width:62ch;
+  margin:0 0 1.6rem;font-size:1rem;line-height:1.6;
+}
+.note{
+  font-family:var(--serif);font-size:.92rem;color:var(--graphite);
+  border-left:2px solid var(--rule);padding:.35rem 0 .35rem .85rem;
+  max-width:62ch;margin:1.1rem 0;line-height:1.55;
+}
+.empty{
+  font-family:var(--serif);color:var(--graphite);padding:2.5rem 0;
+  font-size:1.02rem;max-width:52ch;
+}
+.count{color:var(--graphite);font-weight:500;font-size:.88rem}
+
+/* ---------- schedule: the day chains ---------- */
+.chains{margin:0 0 2.4rem}
+.chain{
+  display:grid;grid-template-columns:var(--gutter) 1fr;
+  align-items:center;gap:0 1rem;padding:.5rem 0;
+}
+.chain + .chain{border-top:1px solid var(--rule-soft)}
+.chain .lab{
+  text-align:right;font-weight:600;font-size:.88rem;line-height:1.25;
+}
+.chain .lab i{display:block;font-style:normal;color:var(--graphite);font-weight:400}
+.track{position:relative}
+.seg{
+  position:absolute;border:0;padding:0;cursor:pointer;
+  border-radius:1px;overflow:hidden;
+  font:inherit;font-size:.72rem;font-weight:600;color:#fff;
+  text-align:left;white-space:nowrap;
+}
+.seg span{display:block;padding:0 .38rem;line-height:16px}
+.seg:hover{filter:brightness(1.14)}
+.seg[data-cur="1"]{box-shadow:inset 0 0 0 2px var(--ink)}
+.t-Plenary{background:#1E3A32}
+.t-Parallel{background:#3E6B5C}
+.t-Session{background:#54806F}
+.t-Poster{background:#7C9A8C}
+.t-Ceremony{background:#2C4A5E}
+.t-Social{background:#8A6A3E}
+.t-Meeting{background:#6E7B72}
+.t-Break,.t-Admin{background:#D5DAD4}
+.seg.t-Break,.seg.t-Admin{color:var(--graphite)}
+.axis{
+  display:grid;grid-template-columns:var(--gutter) 1fr;gap:0 1rem;
+  margin-top:.3rem;
+}
+.axis .marks{position:relative;height:1.1rem}
+.axis b{
+  position:absolute;font-weight:500;font-size:.72rem;color:var(--graphite);
+  transform:translateX(-50%);
+}
+.legend{
+  display:flex;flex-wrap:wrap;gap:.25rem 1.1rem;margin-top:.9rem;
+  font-size:.78rem;color:var(--graphite);
+}
+.legend .sw{display:inline-block;width:.7rem;height:.7rem;border-radius:1px;margin-right:.35rem;vertical-align:-1px}
+
+/* ---------- schedule: expanded rows ---------- */
+.day{margin:0 0 2.2rem}
+.day h3{
+  font-size:1rem;font-weight:700;margin:0 0 .55rem;
+  padding-bottom:.3rem;border-bottom:1px solid var(--ink);
+}
+.row{
+  display:grid;grid-template-columns:var(--gutter) 1fr auto;
+  gap:0 1rem;padding:.52rem 0;border-bottom:1px solid var(--rule-soft);
+  align-items:baseline;
+}
+.row.quiet{color:var(--graphite)}
+.row .t{text-align:right;font-size:.86rem;font-weight:600;white-space:nowrap}
+.row.quiet .t{font-weight:400}
+.row .n{font-family:var(--serif);font-size:1.04rem;line-height:1.35}
+.row.quiet .n{font-size:.94rem}
+.row .r{font-size:.82rem;color:var(--graphite);white-space:nowrap}
+.row .n em{
+  display:block;font-style:normal;font-family:var(--sans);
+  font-size:.8rem;color:var(--graphite);margin-top:.12rem;max-width:56ch;
+}
+
+/* ---------- sessions ---------- */
+.tracklist{margin:0}
+.trk{border-top:1px solid var(--rule-soft);padding:.85rem 0 .95rem}
+.trk:first-child{border-top:1px solid var(--ink)}
+.trk-h{display:grid;grid-template-columns:4.2rem 1fr auto;gap:0 1rem;align-items:baseline}
+.trk-code{font-weight:700;font-size:.95rem;position:relative;padding-left:.7rem}
+.trk-code::before{
+  content:"";position:absolute;left:0;top:.12em;bottom:.12em;width:3px;
+  background:var(--hue);border-radius:2px;
+}
+.trk-t{
+  font-family:var(--serif);font-size:1.1rem;line-height:1.35;
+  margin:0;max-width:60ch;font-weight:400;
+}
+.trk-meta{display:flex;align-items:center;gap:.55rem;white-space:nowrap}
+.star{
+  font:inherit;font-size:1.05rem;line-height:1;background:none;border:0;
+  cursor:pointer;color:var(--rule);padding:.1rem .2rem;border-radius:2px;
+}
+.star:hover{color:var(--graphite)}
+.star[data-on="1"]{color:var(--flag)}
+.disc{
+  font:inherit;font-size:.8rem;font-weight:600;color:var(--graphite);
+  background:none;border:1px solid var(--rule);border-radius:2px;
+  padding:.2rem .5rem;cursor:pointer;
+}
+.disc:hover{border-color:var(--ink);color:var(--ink)}
+.trk-body{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(17rem,1fr));
+  gap:.15rem 1.6rem;margin:.8rem 0 .15rem;padding-left:5.2rem;
+}
+.trk-body[hidden]{display:none}
+.who{
+  font-family:var(--serif);font-size:.98rem;line-height:1.4;
+  padding:.24rem 0;border-bottom:1px solid var(--rule-soft);
+}
+.who b{font-weight:600}
+.who i{
+  display:block;font-style:normal;font-family:var(--sans);
+  font-size:.79rem;color:var(--graphite);line-height:1.35;
+}
+.trk a.src{font-size:.8rem;color:var(--graphite);padding-left:5.2rem;display:inline-block;margin-top:.5rem}
+.trk a.src:hover{color:var(--ink)}
+
+/* ---------- speakers ---------- */
+.filters{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 1.1rem}
+select.f{
+  font:inherit;font-size:.86rem;background:var(--card);color:var(--ink);
+  border:1px solid var(--rule);border-radius:2px;padding:.38rem .5rem;
+}
+table.people{width:100%;border-collapse:collapse}
+table.people th{
+  text-align:left;font-size:.8rem;font-weight:600;color:var(--graphite);
+  padding:.4rem .6rem .4rem 0;border-bottom:1px solid var(--ink);
+  position:sticky;top:2.85rem;background:var(--paper);cursor:pointer;
+  white-space:nowrap;
+}
+table.people th:hover{color:var(--ink)}
+table.people th[data-dir]::after{content:"↑";margin-left:.3rem;font-size:.75rem}
+table.people th[data-dir="desc"]::after{content:"↓"}
+table.people td{
+  padding:.42rem .6rem .42rem 0;border-bottom:1px solid var(--rule-soft);
+  vertical-align:baseline;font-size:.9rem;
+}
+table.people td.nm{font-family:var(--serif);font-size:1rem;white-space:nowrap}
+table.people td.af{color:var(--graphite);max-width:30rem}
+table.people td.se{white-space:nowrap}
+.pill{
+  display:inline-block;font-size:.76rem;font-weight:600;
+  padding:.08rem .4rem;border-radius:2px;margin-right:.25rem;
+  border:1px solid var(--hue);color:var(--hue);
+}
+mark{background:#F2E28A;color:inherit;padding:0 .05em}
+
+/* ---------- talks (loaded from CSV) ---------- */
+.drop{
+  border:1px dashed var(--rule);border-radius:2px;padding:1.6rem;
+  max-width:46rem;background:var(--card);
+}
+.drop.over{border-color:var(--flag);background:#F0EAEC}
+.drop p{margin:0 0 .7rem;font-family:var(--serif);color:var(--graphite);max-width:56ch;line-height:1.6}
+.drop code{font-family:var(--sans);font-weight:600;color:var(--ink);font-size:.88rem}
+.drop input[type=file]{font:inherit;font-size:.86rem}
+.talk{
+  display:grid;grid-template-columns:5.4rem 1fr;gap:0 1rem;
+  padding:.55rem 0;border-bottom:1px solid var(--rule-soft);align-items:baseline;
+}
+.talk .c{font-weight:700;font-size:.86rem;position:relative;padding-left:.7rem}
+.talk .c::before{
+  content:"";position:absolute;left:0;top:.15em;bottom:.15em;width:3px;
+  background:var(--hue);border-radius:2px;
+}
+.talk .ti{font-family:var(--serif);font-size:1.02rem;line-height:1.4;max-width:66ch}
+.chairbar{
+  font-size:.8rem;font-weight:600;color:var(--graphite);
+  padding:.55rem 0 .2rem;border-bottom:1px solid var(--rule);margin-bottom:.1rem;
+}
+.talk details{margin-top:.3rem}
+.talk summary{
+  font-family:var(--sans);font-size:.79rem;font-weight:600;color:var(--graphite);
+  cursor:pointer;list-style:none;
+}
+.talk summary::before{content:"+ ";}
+.talk details[open] summary::before{content:"– ";}
+.talk summary:hover{color:var(--ink)}
+.talk details p{
+  font-family:var(--serif);font-size:.94rem;line-height:1.6;color:var(--graphite);
+  max-width:64ch;margin:.4rem 0 .2rem;
+}
+.talk .c{white-space:nowrap}
+.talk .ti i{
+  display:block;font-style:normal;font-family:var(--sans);font-size:.79rem;
+  color:var(--graphite);margin-top:.14rem;
+}
+
+/* ---------- footer ---------- */
+footer{
+  border-top:1px solid var(--rule);margin-top:2rem;padding:1.1rem 0 2.5rem;
+  font-size:.82rem;color:var(--graphite);
+}
+footer p{margin:.25rem 0;max-width:70ch;line-height:1.55}
+footer a{color:var(--graphite)}
+
+@media (max-width:640px){
+  :root{--gutter:3.9rem}
+  .brand h1{font-size:1.45rem}
+  .trk-h{grid-template-columns:3.4rem 1fr auto}
+  .trk-body,.trk a.src{padding-left:0}
+  .row{grid-template-columns:var(--gutter) 1fr;}
+  .row .r{grid-column:2;font-size:.78rem}
+  table.people td.af{max-width:none}
+  table.people th{top:4.6rem}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media print{
+  nav.tabs,.planbtn,.search,.star,.disc,.drop,.filters{display:none!important}
+  body{background:#fff;font-size:11px}
+  .view[hidden]{display:block!important}
+  .trk-body[hidden]{display:grid!important}
+  .seg{color:#000}
+}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <div class="brand">
+    <h1>IUPAC-PSK50</h1>
+    <span class="dates" id="mDates"></span>
+    <span class="sub" id="mSub"></span>
+  </div>
+</div></header>
+
+<nav class="tabs"><div class="wrap tabs-in" role="tablist">
+  <button class="tab" role="tab" data-v="schedule" aria-selected="true">Schedule</button>
+  <button class="tab" role="tab" data-v="sessions" aria-selected="false">Sessions</button>
+  <button class="tab" role="tab" data-v="speakers" aria-selected="false">Speakers</button>
+  <button class="tab" role="tab" data-v="talks" aria-selected="false">Talks</button>
+  <span class="spacer"></span>
+  <input class="search" id="q" type="search" placeholder="Search names, topics, labs" aria-label="Search">
+  <button class="planbtn" id="planToggle" data-on="0">My plan <span id="planN">0</span></button>
+  <button class="planbtn" id="planSave">Save plan</button>
+</div></nav>
+
+<main class="wrap">
+  <section class="view" id="v-schedule"></section>
+  <section class="view" id="v-sessions" hidden></section>
+  <section class="view" id="v-speakers" hidden></section>
+  <section class="view" id="v-talks" hidden></section>
+</main>
+
+<footer><div class="wrap">
+  <p id="fSrc"></p>
+  <p id="gen"></p>
+  <p>Session chairs, per-talk times and room assignments were not published at the time this
+     was built. Nothing here is inferred — blank means the organisers have not announced it.</p>
+</div></footer>
+
+<script>
+const DATA = {"meta":{"name":"IUPAC-PSK50","subtitle":"50th Anniversary Conference of the Polymer Society of Korea","dates":"28 September – 1 October 2026","source":"polymer.or.kr/conferenceintl","extracted":"2026-09-05","nSpeakers":278,"nTracks":26},"tracks":[{"code":"PL","title":"Plenary Lectures","idx":34,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=34","n":0,"hue":205},{"code":"S1","title":"Polymer Synthesis","idx":1,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=1","n":20,"hue":219},{"code":"S2","title":"High-End Characterization/Polymer Physics/Properties","idx":2,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=2","n":18,"hue":233},{"code":"S3","title":"Processing / Fabrications (Emerging Horizons in Polymer Processing and Fabrication)","idx":3,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=3","n":14,"hue":247},{"code":"S4","title":"Colloids, Interfaces, and Molecular Assemblies for Functional Soft Materials","idx":4,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=4","n":27,"hue":260},{"code":"S5","title":"Polymers for Electronics and Photonics","idx":5,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=5","n":17,"hue":274},{"code":"S6","title":"Emerging Polymer and Hybrid Materials for Advanced Energy Storage and Conversion","idx":6,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=6","n":18,"hue":288},{"code":"S7","title":"Innovations in Polymeric Composites: From Design and Processing to Industrial Applications","idx":7,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=7","n":22,"hue":302},{"code":"S8","title":"Frontiers of Functional Polymers in Biology and Medicine","idx":8,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=8","n":25,"hue":316},{"code":"S9","title":"Polymer Technology for Sustainability","idx":9,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=9","n":16,"hue":330},{"code":"S10","title":"AI-assisted Design and Simulation of Polymers","idx":10,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=10","n":15,"hue":343},{"code":"S11","title":"PMSE-PSK50 Anniversary Symposium: Advancing Polymer Science for a Sustainable and Intelligent Future","idx":19,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=19","n":19,"hue":357},{"code":"S12","title":"Women in Renewable Energy and Sustainability (WiRES) 2026","idx":20,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=20","n":7,"hue":11},{"code":"S13","title":"Korea-Germany Polymer Symposium 2026","idx":21,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=21","n":17,"hue":25},{"code":"S14","title":"The 2nd PSK / CCS-PD Joint Symposium on Frontiers in Polymer Science and Engineering","idx":29,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=29","n":6,"hue":39},{"code":"GS1","title":"Graduate Student Oral Session I: Colloidal and Interfacial Polymer Science","idx":23,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=23","n":0,"hue":53},{"code":"GS2","title":"Graduate Student Oral Session II: Functional Biomaterials and Cosmetic Polymer Engineering","idx":25,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=25","n":0,"hue":67},{"code":"GS3","title":"Graduate Student Oral Session III: Polymer Synthesis, Structure, Properties, and Processing","idx":24,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=24","n":0,"hue":80},{"code":"GS4","title":"Graduate Student Oral Session IV: Polymers for Electronics, Photonics, and Energy","idx":26,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=26","n":0,"hue":94},{"code":"GS5","title":"Graduate Student Oral Session V: Sustainable Polymers and Circular Materials","idx":27,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=27","n":0,"hue":108},{"code":"DCS","title":"D.R.E.A.M Career Mentoring-Networking Session","idx":28,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=28","n":0,"hue":122},{"code":"IDS1","title":"KRICT 50th Anniversary session, Present and Future of Chemical Materials Research","idx":30,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=30","n":8,"hue":136},{"code":"IDS2","title":"Frontiers in Cosmetic Science and Technology (Sponsored by COSMAX)","idx":31,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=31","n":16,"hue":150},{"code":"IDS3","title":"Photoresist: 50 Years of Innovation and the Next 50 Years (Sponsored by DONGJIN SEMICHEM)","idx":32,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=32","n":0,"hue":163},{"code":"IDS4","title":"Advanced Battery Materials and Interface Engineering for Next-Generation Batteries (Sponsored by EcoPro BM)","idx":33,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=33","n":6,"hue":177},{"code":"IDS5","title":"Frontiers in Advanced Polymeric Materials (Sponsored by Toray Science Foundation)","idx":35,"url":"https://polymer.or.kr/conferenceintl/default/program/program_list.php?idx=35","n":9,"hue":191}],"people":[{"name":"Dowon AHN","aff":"Pusan National University, Republic of Korea","country":"South Korea","sessions":["S3"],"sort":"Dowon AHN"},{"name":"Hyungju AHN","aff":"PAL, Republic of Korea","country":"South Korea","sessions":["S2"],"sort":"Hyungju AHN"},{"name":"Zesheng AN","aff":"Jilin University, China","country":"China","sessions":["S14"],"sort":"Zesheng AN"},{"name":"Spiros ANASTASIADIS","aff":"University of Crete, Greece","country":"Greece","sessions":["S2"],"sort":"Spiros ANASTASIADIS"},{"name":"Thomas ANTHOPOULOS","aff":"The University of Manchester, USA","country":"USA","sessions":["S5"],"sort":"Thomas ANTHOPOULOS"},{"name":"Han-Yong BAE","aff":"Sungkyunkwan University, Republic of Korea","country":"South Korea","sessions":["IDS5"],"sort":"Han-Yong BAE"},{"name":"Jin Hye BAE","aff":"Chung-Ang University, Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Jin Hye BAE"},{"name":"Luke BALDWIN","aff":"Air Force Research Laboratory, USA","country":"USA","sessions":["S11"],"sort":"Luke BALDWIN"},{"name":"Joona BANG","aff":"Korea University, Republic of Korea","country":"South Korea","sessions":["S2"],"sort":"Joona BANG"},{"name":"Andrea BELLUATI","aff":"Technical University of Darmstadt","country":"Germany","sessions":["S13"],"sort":"Andrea BELLUATI"},{"name":"Suk Ho BHANG","aff":"Sungkyunkwan University, Republic of Korea","country":"South Korea","sessions":["S8"],"sort":"Suk Ho BHANG"},{"name":"Markus BIESALSKI","aff":"Technical University of Darmstadt, Germany","country":"Germany","sessions":["S13"],"sort":"Markus BIESALSKI"},{"name":"Giovanni BIRARDA","aff":"Elettra - Sincrotrone Trieste, Italy","country":"Italy","sessions":["S2"],"sort":"Giovanni BIRARDA"},{"name":"AJ BOYDSTON","aff":"University Wisconsin-Madison, USA","country":"USA","sessions":["S11"],"sort":"AJ BOYDSTON"},{"name":"Hye Ryung BYON","aff":"Korea Advanced Institute of Science and Technology (KAIST), Republic of Korea","country":"South Korea","sessions":["S6"],"sort":"Hye Ryung BYON"},{"name":"Chaenyung CHA","aff":"UNIST, Republic of Korea","country":"South Korea","sessions":["S8"],"sort":"Chaenyung CHA"},{"name":"Hyojung CHA","aff":"Kyungpook National University, Republic of Korea","country":"South Korea","sessions":["S5"],"sort":"Hyojung CHA"},{"name":"Yi-Tsu CHAN","aff":"NTU, Taiwan","country":"Taiwan","sessions":["S1"],"sort":"Yi-Tsu CHAN"},{"name":"Chia-Chih CHANG","aff":"National Yang Ming Chiao Tung University, Taiwan","country":"Taiwan","sessions":["S8"],"sort":"Chia-Chih CHANG"},{"name":"Kookheon CHAR","aff":"Seoul National University, Republic of Korea","country":"South Korea","sessions":["S13"],"sort":"Kookheon CHAR"},{"name":"Guang CHEN","aff":"Peking University, China","country":"China","sessions":["S10"],"sort":"Guang CHEN"},{"name":"Jiun Tai CHEN","aff":"National Yang Ming Chiao Tung University, Taiwan","country":"Taiwan","sessions":["S4"],"sort":"Jiun Tai CHEN"},{"name":"Xiang CHEN","aff":"Tsinghua University, China","country":"China","sessions":["S6"],"sort":"Xiang CHEN"},{"name":"Byoung-Ki CHO","aff":"Dankook University, Republic of Korea","country":"South Korea","sessions":["IDS2"],"sort":"Byoung-Ki CHO"},{"name":"Ik Sung CHO","aff":"Kyushu University, Japan","country":"Japan","sessions":["S8"],"sort":"Ik Sung CHO"},{"name":"Kilwon CHO","aff":"Pohang University of Science and Technology (POSTECH), Republic of Korea","country":"South Korea","sessions":["S13"],"sort":"Kilwon CHO"},{"name":"Soo-Hyung CHOI","aff":"Hongik University, Republic of Korea","country":"South Korea","sessions":["S2"],"sort":"Soo-Hyung CHOI"},{"name":"Yu-Jin CHOI","aff":"Korea Research Institute of Chemical Technology (KRICT), Republic of Korea","country":"South Korea","sessions":["S1"],"sort":"Yu-Jin CHOI"},{"name":"Myung-Suk CHUN","aff":"KIST & UST-KIST School, Republic of Korea","country":"South Korea","sessions":["S10"],"sort":"Myung-Suk CHUN"},{"name":"Dae Sung CHUNG","aff":"POSTECH, Republic of Korea","country":"South Korea","sessions":["IDS5"],"sort":"Dae Sung CHUNG"},{"name":"Russ COMPOSTO","aff":"University of Pennsylvania, USA","country":"USA","sessions":["S2"],"sort":"Russ COMPOSTO"},{"name":"Van-Duong DAO","aff":"Phenikaa University, Vietnam","country":"Vietnam","sessions":["S7"],"sort":"Van-Duong DAO"},{"name":"Xu DENG","aff":"University of Electronic Science and Technology of China, China","country":"China","sessions":["S4"],"sort":"Xu DENG"},{"name":"Xue-Hui DONG","aff":"South China University of Technology, China","country":"China","sessions":["S14"],"sort":"Xue-Hui DONG"},{"name":"Todd EMRICK","aff":"University of Massachusetts, USA","country":"USA","sessions":["S11"],"sort":"Todd EMRICK"},{"name":"Vida ENGMANN","aff":"University of Southern Denmark, Denmark","country":"Denmark","sessions":["S12"],"sort":"Vida ENGMANN"},{"name":"Youngho EOM","aff":"Hanyang University, Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Youngho EOM"},{"name":"Brett FORS","aff":"Cornell University, USA","country":"USA","sessions":["S1"],"sort":"Brett FORS"},{"name":"Syuji FUJII","aff":"Osaka Institute of Technology, Japan","country":"Japan","sessions":["S4"],"sort":"Syuji FUJII"},{"name":"Nicholas GODMAN","aff":"Air Force Research Laboratory, USA","country":"USA","sessions":["S3"],"sort":"Nicholas GODMAN"},{"name":"Andre GROESCHEL","aff":"University of Bayreuth, Germany","country":"Germany","sessions":["S13"],"sort":"Andre GROESCHEL"},{"name":"Joshua M. GROLMAN","aff":"Materials Science and Engineering The Technion Israel Institute of Technology, Israel","country":"Israel","sessions":["S9"],"sort":"Joshua M. GROLMAN"},{"name":"Min Young HA","aff":"Kyung Hee University, Republic of Korea","country":"South Korea","sessions":["S10"],"sort":"Min Young HA"},{"name":"Minjeong HA","aff":"Gwangju Institute of Science and Technology (GIST), Republic of Korea","country":"South Korea","sessions":["S5"],"sort":"Minjeong HA"},{"name":"Sei Kwang HAHN","aff":"POSTECH, Republic of Korea","country":"South Korea","sessions":["S13"],"sort":"Sei Kwang HAHN"},{"name":"Lisa M. HALL","aff":"The Ohio State University, USA","country":"USA","sessions":["S10"],"sort":"Lisa M. HALL"},{"name":"Mahiar Max HAMEDI","aff":"KTH Royal Institute of Technology, Sweden","country":"Sweden","sessions":["S6"],"sort":"Mahiar Max HAMEDI"},{"name":"Tae Hee HAN","aff":"Hanyang University, Republic of Korea","country":"South Korea","sessions":["S11"],"sort":"Tae Hee HAN"},{"name":"Laura HARTMANN","aff":"University of Freiburg, Germany","country":"Germany","sessions":["S13"],"sort":"Laura HARTMANN"},{"name":"Michael A. HICKNER","aff":"Michigan State University, USA","country":"USA","sessions":["S6"],"sort":"Michael A. HICKNER"},{"name":"Masayoshi HIGUCHI","aff":"NIMS, Japan","country":"Japan","sessions":["S5"],"sort":"Masayoshi HIGUCHI"},{"name":"Guilhem X De HOE","aff":"University of Florida, USA","country":"USA","sessions":["S9"],"sort":"Guilhem X De HOE"},{"name":"Joung Sook HONG","aff":"Jeju National University, Republic of Korea","country":"South Korea","sessions":["S3"],"sort":"Joung Sook HONG"},{"name":"Soon Hyeok HONG","aff":"Korea Advanced Institute of Science and Technology (KAIST), Republic of Korea","country":"South Korea","sessions":["S9"],"sort":"Soon Hyeok HONG"},{"name":"Sung Woo HONG","aff":"Korea Institute of Industrial Technology (KITECH), Republic of Korea","country":"South Korea","sessions":["S9"],"sort":"Sung Woo HONG"},{"name":"Suksun HORPIBULSUK","aff":"National Science and Technology Development Agency (NSTDA), Thailand","country":"Thailand","sessions":["IDS5"],"sort":"Suksun HORPIBULSUK"},{"name":"Robert HOYE","aff":"University of Oxford, UK","country":"UK","sessions":["S5"],"sort":"Robert HOYE"},{"name":"Atsushi HOZUMI","aff":"National Institute of Advanced Industrial Science and Technology, Japan","country":"Japan","sessions":["S4"],"sort":"Atsushi HOZUMI"},{"name":"Yu-I HSU","aff":"Osaka University, Japan","country":"Japan","sessions":["S9"],"sort":"Yu-I HSU"},{"name":"Hye Rim HWANG","aff":"Ewha Womans University, Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Hye Rim HWANG"},{"name":"Sung Yeon HWANG","aff":"Kyung Hee University, Republic of Korea","country":"South Korea","sessions":["S9"],"sort":"Sung Yeon HWANG"},{"name":"Yoon-Ho HWANG","aff":"Pukyong National University, Republic of Korea","country":"South Korea","sessions":["IDS2"],"sort":"Yoon-Ho HWANG"},{"name":"Sung Gap IM","aff":"Korea Advanced Institute of Science and Technology (KAIST), Republic of Korea","country":"South Korea","sessions":["S8"],"sort":"Sung Gap IM"},{"name":"Hye-Young JANG","aff":"Ajou University, Republic of Korea","country":"South Korea","sessions":["S1"],"sort":"Hye-Young JANG"},{"name":"Jaeyoung JANG","aff":"Hanyang University, Republic of Korea","country":"South Korea","sessions":["S6"],"sort":"Jaeyoung JANG"},{"name":"Woo-Dong JANG","aff":"Yonsei University, Republic of Korea","country":"South Korea","sessions":["S1"],"sort":"Woo-Dong JANG"},{"name":"Ji Hoon JEONG","aff":"Sungkyunkwan University, Republic of Korea","country":"South Korea","sessions":["S8"],"sort":"Ji Hoon JEONG"},{"name":"Ji-Eun JEONG","aff":"Korea Research Institute of Chemical Technology (KRICT), Republic of Korea","country":"South Korea","sessions":["S11"],"sort":"Ji-Eun JEONG"},{"name":"Sohdam JEONG","aff":"Dong-Eui University, Republic of Korea","country":"South Korea","sessions":["S10"],"sort":"Sohdam JEONG"},{"name":"Zhongfan JIA","aff":"Flinders University, Australia","country":"Australia","sessions":["S6"],"sort":"Zhongfan JIA"},{"name":"Zhongbao JIAN","aff":"Changchun Institute of Applied Chemistry, CAS, China","country":"China","sessions":["S14"],"sort":"Zhongbao JIAN"},{"name":"Jian JIANG","aff":"Chinese Academy of Sciences, China","country":"China","sessions":["S10"],"sort":"Jian JIANG"},{"name":"Sung-Ho JIN","aff":"Pusan National University, Republic of Korea","country":"South Korea","sessions":["S13"],"sort":"Sung-Ho JIN"},{"name":"Hiroshi JINNAI","aff":"Tohoku University, Japan","country":"Japan","sessions":["S2"],"sort":"Hiroshi JINNAI"},{"name":"Sangyong JON","aff":"KAIST, Republic of Korea","country":"South Korea","sessions":["S8"],"sort":"Sangyong JON"},{"name":"Yongho JOO","aff":"Korea Institute of Science and Technology (KIST), Republic of Korea","country":"South Korea","sessions":["S7"],"sort":"Yongho JOO"},{"name":"Hyun Min JUNG","aff":"Kumoh National Institute of Technology, Republic of Korea","country":"South Korea","sessions":["S9"],"sort":"Hyun Min JUNG"},{"name":"Sung-Kyun JUNG","aff":"Seoul National University, Korea","country":"South Korea","sessions":["IDS4"],"sort":"Sung-Kyun JUNG"},{"name":"Sungjune JUNG","aff":"Pohang University of Science and Technology","country":"South Korea","sessions":["S3"],"sort":"Sungjune JUNG"},{"name":"Yeonsu JUNG","aff":"Inha University, Republic of Korea","country":"South Korea","sessions":["S7"],"sort":"Yeonsu JUNG"},{"name":"Young Hwa JUNG","aff":"Pohang Accelerator Laboratory, Republic of Korea","country":"South Korea","sessions":["IDS2"],"sort":"Young Hwa JUNG"},{"name":"Dongku KANG","aff":"Incheon National University, Republic of Korea","country":"South Korea","sessions":["S9"],"sort":"Dongku KANG"},{"name":"Min-ho KANG","aff":"The Catholic University of Korea, Republic of Korea","country":"South Korea","sessions":["IDS2"],"sort":"Min-ho KANG"},{"name":"Moon Sung KANG","aff":"Sogang University, Republic of Korea","country":"South Korea","sessions":["S5"],"sort":"Moon Sung KANG"},{"name":"Saewon KANG","aff":"Korea Research Institute of Chemical Technology (KRICT), Republic of Korea","country":"South Korea","sessions":["S7"],"sort":"Saewon KANG"},{"name":"Yongku KANG","aff":"Korea Research Institute of Chemical Technology, Republic of Korea","country":"South Korea","sessions":["IDS1"],"sort":"Yongku KANG"},{"name":"Young Jong KANG","aff":"Hanyang University, Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Young Jong KANG"},{"name":"Bumjoon KIM","aff":"Korea Advanced Institute of Science and Technology (KAIST), Republic of Korea","country":"South Korea","sessions":["S6"],"sort":"Bumjoon KIM"},{"name":"Byeong-Su KIM","aff":"Yonsei University, Republic of Korea","country":"South Korea","sessions":["S8"],"sort":"Byeong-Su KIM"},{"name":"Byeonggwan KIM","aff":"Chungnam National University, Republic of Korea","country":"South Korea","sessions":["S6"],"sort":"Byeonggwan KIM"},{"name":"Cheoljae KIM","aff":"Chungbuk National University, Republic of Korea","country":"South Korea","sessions":["S1"],"sort":"Cheoljae KIM"},{"name":"Daegun KIM","aff":"Gachon University, Republic of Korea","country":"South Korea","sessions":["S6"],"sort":"Daegun KIM"},{"name":"Dahin KIM","aff":"University of Seoul, Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Dahin KIM"},{"name":"Eunkyoung KIM","aff":"Yonsei University, Republic of Korea","country":"South Korea","sessions":["S13"],"sort":"Eunkyoung KIM"},{"name":"Hobeom KIM","aff":"GIST, Republic of Korea","country":"South Korea","sessions":["IDS5"],"sort":"Hobeom KIM"},{"name":"Hyemin KIM","aff":"Konkuk University, Republic of Korea","country":"South Korea","sessions":["IDS2"],"sort":"Hyemin KIM"},{"name":"Hyun KIM","aff":"Korea Research Institute of Chemical Technology, Republic of Korea","country":"South Korea","sessions":["IDS1"],"sort":"Hyun KIM"},{"name":"Jae Jung KIM","aff":"Hongik University, Republic of Korea","country":"South Korea","sessions":["IDS2"],"sort":"Jae Jung KIM"},{"name":"Jaeup KIM","aff":"UNIST, Republic of Korea","country":"South Korea","sessions":["S10"],"sort":"Jaeup KIM"},{"name":"Jaewoo KIM","aff":"Korea Institute of Science and Technology (KIST), Republic of Korea","country":"South Korea","sessions":["S7"],"sort":"Jaewoo KIM"},{"name":"Ji Yoon KIM","aff":"Ulsan National Institute of Science and Technology (UNIST), Republic of Korea","country":"South Korea","sessions":["S11"],"sort":"Ji Yoon KIM"},{"name":"Ji-Won KIM","aff":"Kyungpook National University, Republic of Korea","country":"South Korea","sessions":["S3"],"sort":"Ji-Won KIM"},{"name":"Ji-Young KIM","aff":"Rensselaer Polytechnic Institute, USA","country":"USA","sessions":["S7"],"sort":"Ji-Young KIM"},{"name":"Jin Woong KIM","aff":"Sungkyunkwan University, Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Jin Woong KIM"},{"name":"Jungwook KIM","aff":"Seoul National University, Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Jungwook KIM"},{"name":"Keekyoung KIM","aff":"University of Calgary, Canada","country":"Canada","sessions":["S8"],"sort":"Keekyoung KIM"},{"name":"Kyobum KIM","aff":"Dongguk University, Republic of Korea","country":"South Korea","sessions":["S8"],"sort":"Kyobum KIM"},{"name":"Kyoung Taek KIM","aff":"Seoul National University, Republic of Korea","country":"South Korea","sessions":["S1"],"sort":"Kyoung Taek KIM"},{"name":"Kyu Han KIM","aff":"Seoul National University of Science and Technology (SEOULTECH), Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Kyu Han KIM"},{"name":"Kyung Sook KIM","aff":"Kyung Hee University, Republic of Korea","country":"South Korea","sessions":["IDS2"],"sort":"Kyung Sook KIM"},{"name":"Min KIM","aff":"University of Seoul, Republic of Korea","country":"South Korea","sessions":["S5"],"sort":"Min KIM"},{"name":"Minsoo KIM","aff":"Sunchon National University, Republic of Korea","country":"South Korea","sessions":["S7"],"sort":"Minsoo KIM"},{"name":"Nara KIM","aff":"Linkoping University, Sweden","country":"Sweden","sessions":["S6"],"sort":"Nara KIM"},{"name":"Sang Ouk KIM","aff":"Korea Advanced Institute of Science and Technology (KAIST), Republic of Korea","country":"South Korea","sessions":["S13"],"sort":"Sang Ouk KIM"},{"name":"Sehoon KIM","aff":"Korea Institute of Science and Technology (KIST) & University of Science and Technology (UST), Republic of Korea","country":"South Korea","sessions":["S13"],"sort":"Sehoon KIM"},{"name":"Seong Yun KIM","aff":"Jeonbuk National University, Republic of Korea","country":"South Korea","sessions":["S3"],"sort":"Seong Yun KIM"},{"name":"Shin-Hyun KIM","aff":"Korea Advanced Institute of Science and Technology (KAIST), Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Shin-Hyun KIM"},{"name":"So Youn KIM","aff":"Seoul National University, Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"So Youn KIM"},{"name":"Sun Hwa KIM","aff":"Korea Institute of Science and Technology, Republic of Korea","country":"South Korea","sessions":["IDS2"],"sort":"Sun Hwa KIM"},{"name":"Sungjin KIM","aff":"University of New Mexico, USA","country":"USA","sessions":["S7"],"sort":"Sungjin KIM"},{"name":"Tae-il KIM","aff":"Sungkyunkwan University, Republic of Korea","country":"South Korea","sessions":["S11"],"sort":"Tae-il KIM"},{"name":"Taehoon KIM","aff":"Korea Institute of Materials Science (KIMS), Republic of Korea","country":"South Korea","sessions":["S7"],"sort":"Taehoon KIM"},{"name":"Yoonseob KIM","aff":"The Hong Kong University of Science and Technology, Hong Kong","country":"Hong Kong","sessions":["S7"],"sort":"Yoonseob KIM"},{"name":"Youn Soo KIM","aff":"Pohang University of Science and Technology (POSTECH), Republic of Korea","country":"South Korea","sessions":["S1"],"sort":"Youn Soo KIM"},{"name":"Young Yun KIM","aff":"Korea Research Institute of Chemical Technology, Republic of Korea","country":"South Korea","sessions":["IDS1"],"sort":"Young Yun KIM"},{"name":"Yu Seung KIM","aff":"Los Alamos National Laboratory, USA","country":"USA","sessions":["S6"],"sort":"Yu Seung KIM"},{"name":"Hyunhyub KO","aff":"Ulsan National Institute of Science and Technology (UNIST), Republic of Korea","country":"South Korea","sessions":["S7"],"sort":"Hyunhyub KO"},{"name":"Jina KO","aff":"University of Pennsylvania, USA","country":"USA","sessions":["S8"],"sort":"Jina KO"},{"name":"Won-Gun KO","aff":"Yonsei University, Republic of Korea","country":"South Korea","sessions":["S8"],"sort":"Won-Gun KO"},{"name":"Byungjin KOO","aff":"Dankook University, Republic of Korea","country":"South Korea","sessions":["S1"],"sort":"Byungjin KOO"},{"name":"Jaseung KOO","aff":"Chungnam National University, Republic of Korea","country":"South Korea","sessions":["S2"],"sort":"Jaseung KOO"},{"name":"Jun Mo KOO","aff":"Chungnam National University, Republic of Korea","country":"South Korea","sessions":["S9"],"sort":"Jun Mo KOO"},{"name":"Kang Hee KU","aff":"Ulsan National Institute of Science and Technology (UNIST), Republic of Korea","country":"South Korea","sessions":["S7"],"sort":"Kang Hee KU"},{"name":"Sanat KUMAR","aff":"Columbia University, USA","country":"USA","sessions":["S11"],"sort":"Sanat KUMAR"},{"name":"Min Sang KWON","aff":"Seoul National University, Republic of Korea","country":"South Korea","sessions":["S1"],"sort":"Min Sang KWON"},{"name":"Taejin KWON","aff":"Jeju National University, Republic of Korea","country":"South Korea","sessions":["S10"],"sort":"Taejin KWON"},{"name":"Igor LACIK","aff":"Slovak Academy of Sciences (SAS), Slovakia","country":"Slovakia","sessions":["S8"],"sort":"Igor LACIK"},{"name":"Bun Yeol LEE","aff":"Ajou University, Republic of Korea","country":"South Korea","sessions":["S1"],"sort":"Bun Yeol LEE"},{"name":"Chang-Soo LEE","aff":"Chungnam National University, Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Chang-Soo LEE"},{"name":"Changyeon LEE","aff":"Chung-Ang University, Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Changyeon LEE"},{"name":"Daeyeon LEE","aff":"University of Pennsylvania, USA","country":"USA","sessions":["S4"],"sort":"Daeyeon LEE"},{"name":"Dong Woog LEE","aff":"Ulsan National Institute of Science and Technology (UNIST), Republic of Korea","country":"South Korea","sessions":["S2"],"sort":"Dong Woog LEE"},{"name":"Eunji LEE","aff":"GIST, Republic of Korea","country":"South Korea","sessions":["S2","S12"],"sort":"Eunji LEE"},{"name":"Eunsung LEE","aff":"Seoul National University, Republic of Korea","country":"South Korea","sessions":["IDS5"],"sort":"Eunsung LEE"},{"name":"Gun-Hee LEE","aff":"Ulsan National Institute of Science and Technology (UNIST), Republic of Korea","country":"South Korea","sessions":["S11"],"sort":"Gun-Hee LEE"},{"name":"Hongkyung LEE","aff":"Yonsei University, Korea","country":"South Korea","sessions":["IDS4"],"sort":"Hongkyung LEE"},{"name":"Hyo Min LEE","aff":"Pohang University of Science and Technology (POSTECH), Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Hyo Min LEE"},{"name":"Hyunjung LEE","aff":"Kookmin University, Republic of Korea","country":"South Korea","sessions":["S12"],"sort":"Hyunjung LEE"},{"name":"In-Hwan LEE","aff":"Ajou University, Republic of Korea","country":"South Korea","sessions":["S1"],"sort":"In-Hwan LEE"},{"name":"Jae Young LEE","aff":"Gwangju Institute of Science and Technology (GIST), Republic of Korea","country":"South Korea","sessions":["S8"],"sort":"Jae Young LEE"},{"name":"Jaejun LEE","aff":"Pusan National University, Republic of Korea","country":"South Korea","sessions":["S11"],"sort":"Jaejun LEE"},{"name":"Ju-Hyuck LEE","aff":"Daegu Gyeongbuk Institute of Science and Technology (DGIST), Republic of Korea","country":"South Korea","sessions":["S6"],"sort":"Ju-Hyuck LEE"},{"name":"Jung-tae LEE","aff":"Kyung Hee University, Republic of Korea","country":"South Korea","sessions":["S3"],"sort":"Jung-tae LEE"},{"name":"Kyung Min LEE","aff":"Air Force Research Laboratory, USA","country":"USA","sessions":["S3"],"sort":"Kyung Min LEE"},{"name":"Myongsoo LEE","aff":"Fudan University, China","country":"China","sessions":["S4"],"sort":"Myongsoo LEE"},{"name":"Sang Jin LEE","aff":"The University of Hong Kong, Hong Kong","country":"Hong Kong","sessions":["S8"],"sort":"Sang Jin LEE"},{"name":"Sangmin LEE","aff":"Pohang University of Science and Technology (POSTECH), Republic of Korea","country":"South Korea","sessions":["S10"],"sort":"Sangmin LEE"},{"name":"Sangwoo LEE","aff":"Isermann Department of Chemical and Biological Engineering Rensselaer Polytechnic Institute, USA","country":"USA","sessions":["S7"],"sort":"Sangwoo LEE"},{"name":"Soo-Hong LEE","aff":"Dongguk University, Republic of Korea","country":"South Korea","sessions":["S8"],"sort":"Soo-Hong LEE"},{"name":"Su Yeon LEE","aff":"Korea Research Institute of Chemical Technology, Republic of Korea","country":"South Korea","sessions":["IDS1"],"sort":"Su Yeon LEE"},{"name":"Tae Kyung LEE","aff":"Hanyang University, Republic of Korea","country":"South Korea","sessions":["S10"],"sort":"Tae Kyung LEE"},{"name":"Won Bo LEE","aff":"Seoul National University, Republic of Korea","country":"South Korea","sessions":["S10"],"sort":"Won Bo LEE"},{"name":"Wonho LEE","aff":"Kumoh National Institute of Technology (KIT), Republic of Korea","country":"South Korea","sessions":["S5"],"sort":"Wonho LEE"},{"name":"Yan LEE","aff":"Seoul National University, Republic of Korea","country":"South Korea","sessions":["IDS2"],"sort":"Yan LEE"},{"name":"Sheng LI","aff":"Korea Advanced Institute of Science and Technology (KAIST), Republic of Korea","country":"South Korea","sessions":["S2"],"sort":"Sheng LI"},{"name":"Zhibo LI","aff":"Qingdao University of Science and Technology, China","country":"China","sessions":["S1"],"sort":"Zhibo LI"},{"name":"Zi-Chen LI","aff":"Peking University, China","country":"China","sessions":["S1"],"sort":"Zi-Chen LI"},{"name":"Jeewoo LIM","aff":"Kyung Hee University, Republic of Korea","country":"South Korea","sessions":["S1"],"sort":"Jeewoo LIM"},{"name":"Kun-Han Lin","aff":"National Tsing Hua University, Taiwan","country":"Taiwan","sessions":["S10"],"sort":"Kun-Han Lin"},{"name":"Mingjie LIU","aff":"Beihang University, China","country":"China","sessions":["S14"],"sort":"Mingjie LIU"},{"name":"Xiaokong LIU","aff":"Jilin University, China","country":"China","sessions":["S9"],"sort":"Xiaokong LIU"},{"name":"Chen-Tsyr LO","aff":"National Taiwan University of Science and Technology, Taiwan","country":"Taiwan","sessions":["S6"],"sort":"Chen-Tsyr LO"},{"name":"Heather LOGIE","aff":"Australian National University, Australia","country":"Australia","sessions":["S12"],"sort":"Heather LOGIE"},{"name":"Vinothan N. MANOHARAN","aff":"Harvard University, USA","country":"USA","sessions":["S4"],"sort":"Vinothan N. MANOHARAN"},{"name":"Naoji MATSUHISA","aff":"University of Tokyo, Japan","country":"Japan","sessions":["S5"],"sort":"Naoji MATSUHISA"},{"name":"Henning MENZEL","aff":"Technical University of Braunschweig, Germany","country":"Germany","sessions":["S13"],"sort":"Henning MENZEL"},{"name":"Bong Jin MOON","aff":"Sogang University, Republic of Korea","country":"South Korea","sessions":["S1"],"sort":"Bong Jin MOON"},{"name":"Hong Chul MOON","aff":"Korea Advanced Institute of Science and Technology (KAIST), Republic of Korea","country":"South Korea","sessions":["S7"],"sort":"Hong Chul MOON"},{"name":"Jun Hyuk MOON","aff":"Korea University, Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Jun Hyuk MOON"},{"name":"Markus MUELLNER","aff":"University of Sydney, Australia","country":"Australia","sessions":["S1"],"sort":"Markus MUELLNER"},{"name":"Jun Young MUN","aff":"Sungkyunkwan University, Korea","country":"South Korea","sessions":["IDS4"],"sort":"Jun Young MUN"},{"name":"Seok-In NA","aff":"Jeonbuk National University, Republic of Korea","country":"South Korea","sessions":["S5"],"sort":"Seok-In NA"},{"name":"Ki-Ho NAM","aff":"Kyungpook National University, Republic of Korea","country":"South Korea","sessions":["S7"],"sort":"Ki-Ho NAM"},{"name":"Sooji NAM","aff":"Electronics and Telecommunications Research Institute (ETRI), Republic of Korea","country":"South Korea","sessions":["S5"],"sort":"Sooji NAM"},{"name":"Yoonsung NAM","aff":"KAIST, Republic of Korea","country":"South Korea","sessions":["IDS2"],"sort":"Yoonsung NAM"},{"name":"Dhriti NEPAL","aff":"Air Force Research Laboratory, USA","country":"USA","sessions":["S11"],"sort":"Dhriti NEPAL"},{"name":"Dongyeop OH","aff":"Korea University, Republic of Korea","country":"South Korea","sessions":["S9"],"sort":"Dongyeop OH"},{"name":"Hee Jeung OH","aff":"Pennsylvenia State University, USA","country":"USA","sessions":["S11"],"sort":"Hee Jeung OH"},{"name":"Ilkwon OH","aff":"Korea Advanced Institute of Science and Technology (KAIST), Republic of Korea","country":"South Korea","sessions":["S7"],"sort":"Ilkwon OH"},{"name":"Hyun-jong PAIK","aff":"Pusan National University, Republic of Korea","country":"South Korea","sessions":["S1"],"sort":"Hyun-jong PAIK"},{"name":"Wei Kong PANG","aff":"Univeristy of Wollongong, Australia","country":"Australia","sessions":["IDS4"],"sort":"Wei Kong PANG"},{"name":"Anna-Maria PAPPA","aff":"Khalifa University, United Arab Emirates","country":"UAE","sessions":["S12"],"sort":"Anna-Maria PAPPA"},{"name":"Chanwook PARK","aff":"Interior Materials Development Team, Materials Research and Engineering Center, Hyundai Motor Company","country":"South Korea","sessions":["S9"],"sort":"Chanwook PARK"},{"name":"Daehwan PARK","aff":"Jeju National University, Republic of Korea","country":"South Korea","sessions":["IDS2"],"sort":"Daehwan PARK"},{"name":"Hyun Jin PARK","aff":"Korea Research Institute of Chemical Technology, Republic of Korea","country":"South Korea","sessions":["IDS1"],"sort":"Hyun Jin PARK"},{"name":"Jae Hyung PARK","aff":"Sungkyunkwan University, Republic of Korea","country":"South Korea","sessions":["S8"],"sort":"Jae Hyung PARK"},{"name":"Jeong-Eun PARK","aff":"GIST, Republic of Korea","country":"South Korea","sessions":["IDS2"],"sort":"Jeong-Eun PARK"},{"name":"Ji Hoon PARK","aff":"Ewha Womans University, Republic of Korea","country":"South Korea","sessions":["S11"],"sort":"Ji Hoon PARK"},{"name":"Ju Hyun PARK","aff":"Chung-Ang University, Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Ju Hyun PARK"},{"name":"Juhyuk PARK","aff":"Seoul National University, Republic of Korea","country":"South Korea","sessions":["S3"],"sort":"Juhyuk PARK"},{"name":"Jun Dong PARK","aff":"Sookmyung Women's University, Republic of Korea","country":"South Korea","sessions":["IDS2"],"sort":"Jun Dong PARK"},{"name":"Kyoungweon PARK","aff":"Blue Halos, USA","country":"USA","sessions":["S11"],"sort":"Kyoungweon PARK"},{"name":"Kyung Min PARK","aff":"Incheon National University, Republic of Korea","country":"South Korea","sessions":["S8"],"sort":"Kyung Min PARK"},{"name":"Moon Jeong PARK","aff":"Pohang University of Science and Technology (POSTECH), Republic of Korea","country":"South Korea","sessions":["S2"],"sort":"Moon Jeong PARK"},{"name":"Nam-Yung PARK","aff":"Inha University, Korea","country":"South Korea","sessions":["IDS4"],"sort":"Nam-Yung PARK"},{"name":"So-Jung PARK","aff":"Ewha Womans University, Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"So-Jung PARK"},{"name":"Sungmin PARK","aff":"Sejong University, Republic of Korea","country":"South Korea","sessions":["S3"],"sort":"Sungmin PARK"},{"name":"Gregory I. Peterson","aff":"Incheon National University, Republic of Korea","country":"South Korea","sessions":["S11"],"sort":"Gregory I. Peterson"},{"name":"Agus PURWANTO","aff":"Universitas Sebelas Maret (UNS), Indonesia","country":"Indonesia","sessions":["IDS5"],"sort":"Agus PURWANTO"},{"name":"Jeffrey PYUN","aff":"University of Arizona, USA","country":"USA","sessions":["S1"],"sort":"Jeffrey PYUN"},{"name":"Bastian RAPP","aff":"University of Freiburg, Germany","country":"Germany","sessions":["S13"],"sort":"Bastian RAPP"},{"name":"Richard A. REGISTER","aff":"Princeton University, USA","country":"USA","sessions":["S2"],"sort":"Richard A. REGISTER"},{"name":"Sang Chul ROH","aff":"Chonnam National University, Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Sang Chul ROH"},{"name":"Stephan ROTH","aff":"Deutsches Elektronen-Synchrotron, Germany","country":"Germany","sessions":["S2"],"sort":"Stephan ROTH"},{"name":"Ja-Hyung RYU","aff":"Ulsan National Institute of Science and Technology (UNIST), Republic of Korea","country":"South Korea","sessions":["S8"],"sort":"Ja-Hyung RYU"},{"name":"Jaegeon RYU","aff":"Sogang University, Republic of Korea","country":"South Korea","sessions":["IDS5"],"sort":"Jaegeon RYU"},{"name":"Jungki RYU","aff":"Ulsan National Institute of Science and Technology (UNIST), Republic of Korea","country":"South Korea","sessions":["S6"],"sort":"Jungki RYU"},{"name":"Svetlana SANTER","aff":"University of Potsdam, Germany","country":"Germany","sessions":["S13"],"sort":"Svetlana SANTER"},{"name":"Christian SCHMITT","aff":"Karlsruhe Institute of Technology, Germany","country":"Germany","sessions":["S13"],"sort":"Christian SCHMITT"},{"name":"Stephen SCHRETTL","aff":"Technical University of Munich, Germany","country":"Germany","sessions":["S13"],"sort":"Stephen SCHRETTL"},{"name":"Ji-Youn SEO","aff":"Pusan National University, Republic of Korea","country":"South Korea","sessions":["S5"],"sort":"Ji-Youn SEO"},{"name":"Myungeun SEO","aff":"Korea Advanced Institute of Science and Technology (KAIST), Republic of Korea","country":"South Korea","sessions":["S13"],"sort":"Myungeun SEO"},{"name":"S. Eileen SEO","aff":"Arizona State University, USA","country":"USA","sessions":["S7"],"sort":"S. Eileen SEO"},{"name":"Jong Geun SEONG","aff":"Korea Institute of Science and Technology (KIST), Republic of Korea","country":"South Korea","sessions":["S6"],"sort":"Jong Geun SEONG"},{"name":"Dong-Myeong SHIN","aff":"The University of Hong Kong, Hong Kong","country":"Hong Kong","sessions":["S6"],"sort":"Dong-Myeong SHIN"},{"name":"Jihoon SHIN","aff":"Korea Research Institute of Chemical Technology (KRICT), Republic of Korea","country":"South Korea","sessions":["S9"],"sort":"Jihoon SHIN"},{"name":"Tae Joo SHIN","aff":"Ulsan National Institute of Science and Technology (UNIST), Republic of Korea","country":"South Korea","sessions":["S2"],"sort":"Tae Joo SHIN"},{"name":"Atsushi SHISHIDO","aff":"Institute of Science Tokyo, Japan","country":"Japan","sessions":["S3"],"sort":"Atsushi SHISHIDO"},{"name":"Tae Soup SIM","aff":"Ajou University, Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Tae Soup SIM"},{"name":"Charles E. SING","aff":"University of Illinois at Urbana-Champaign, USA","country":"USA","sessions":["S10"],"sort":"Charles E. SING"},{"name":"Soonyong SO","aff":"Korea Research Institute of Chemical Technology (KRICT), Republic of Korea","country":"South Korea","sessions":["S6"],"sort":"Soonyong SO"},{"name":"Daewon SOHN","aff":"Hanyang University, Republic of Korea","country":"South Korea","sessions":["S2"],"sort":"Daewon SOHN"},{"name":"Eun Ho SOHN","aff":"Korea Research Institute of Chemical Technology, Republic of Korea","country":"South Korea","sessions":["IDS1"],"sort":"Eun Ho SOHN"},{"name":"Christopher SOLES","aff":"National Institute of Standards and Technology, USA","country":"USA","sessions":["S11"],"sort":"Christopher SOLES"},{"name":"Chang Yun SON","aff":"Seoul National University, Republic of Korea","country":"South Korea","sessions":["IDS5"],"sort":"Chang Yun SON"},{"name":"Jae Sung SON","aff":"Pohang University of Science and Technology, Republic of Korea","country":"South Korea","sessions":["S3"],"sort":"Jae Sung SON"},{"name":"Jeong Gon SON","aff":"Korea Institute of Science and Technology (KIST), Republic of Korea","country":"South Korea","sessions":["S7"],"sort":"Jeong Gon SON"},{"name":"Changsik SONG","aff":"Sungkyunkwan University, Republic of Korea","country":"South Korea","sessions":["S11"],"sort":"Changsik SONG"},{"name":"Dong-Po SONG","aff":"Tianjin University, China","country":"China","sessions":["S4"],"sort":"Dong-Po SONG"},{"name":"Kenan SONG","aff":"University of Georgia, USA","country":"USA","sessions":["S3"],"sort":"Kenan SONG"},{"name":"Woo Seok SONG","aff":"Korea Research Institute of Chemical Technology, Republic of Korea","country":"South Korea","sessions":["IDS1"],"sort":"Woo Seok SONG"},{"name":"Christopher STAFFORD","aff":"National Institute of Standards and Technology, USA","country":"USA","sessions":["S11"],"sort":"Christopher STAFFORD"},{"name":"Petr STEPANEK","aff":"Center of Bio-Medical Polymers Institute of Macromolecular Chemistry CAS, Czech Republic","country":"Czech Republic","sessions":["S2"],"sort":"Petr STEPANEK"},{"name":"Jung Don SUK","aff":"Korea Research Institute of Chemical Technology, Republic of Korea","country":"South Korea","sessions":["IDS1"],"sort":"Jung Don SUK"},{"name":"Jeong-Yun SUN","aff":"Seoul National University, Republic of Korea","country":"South Korea","sessions":["IDS2"],"sort":"Jeong-Yun SUN"},{"name":"Bong June SUNG","aff":"Sogang University, Republic of Korea","country":"South Korea","sessions":["S10"],"sort":"Bong June SUNG"},{"name":"Yu Jun TAN","aff":"National University of Singapore, Singapore","country":"Singapore","sessions":["S5"],"sort":"Yu Jun TAN"},{"name":"Serpil TEKOGLU","aff":"Johannes Kepler Universitat Linz, Austria","country":"Austria","sessions":["S12"],"sort":"Serpil TEKOGLU"},{"name":"Kai WANG","aff":"Peking University, China","country":"China","sessions":["S8"],"sort":"Kai WANG"},{"name":"Pan Wang","aff":"Westlake University, China","country":"China","sessions":["S6"],"sort":"Pan Wang"},{"name":"Yapei WANG","aff":"Renmin University of China, China","country":"China","sessions":["S14"],"sort":"Yapei WANG"},{"name":"Shun WATANABE","aff":"RIKEN, Japan","country":"Japan","sessions":["S5"],"sort":"Shun WATANABE"},{"name":"Dong Ryeol WHANG","aff":"Hannam University, Republic of Korea","country":"South Korea","sessions":["S5"],"sort":"Dong Ryeol WHANG"},{"name":"Jeong Jae WIE","aff":"Hanyang University, Republic of Korea","country":"South Korea","sessions":["S11"],"sort":"Jeong Jae WIE"},{"name":"Jinrong WU","aff":"Sichuan University, China","country":"China","sessions":["S9"],"sort":"Jinrong WU"},{"name":"Zhongbin WU","aff":"Northwestern Polytechnical University, China","country":"China","sessions":["S5"],"sort":"Zhongbin WU"},{"name":"E XIAO","aff":"Hunan MayBio Biopharmaceutical Co.,Ltd","country":"China","sessions":["S8"],"sort":"E XIAO"},{"name":"Shimei XU","aff":"Sichuan University, China","country":"China","sessions":["S9"],"sort":"Shimei XU"},{"name":"Asako YAMAYOSHI","aff":"Tokyo Institute of Technology, Japan","country":"Japan","sessions":["S8"],"sort":"Asako YAMAYOSHI"},{"name":"Sanghee YANG","aff":"Inha University, Republic of Korea","country":"South Korea","sessions":["S1"],"sort":"Sanghee YANG"},{"name":"Seung Jae YANG","aff":"Korea Research Institute of Chemical Technology (KRICT), Republic of Korea","country":"South Korea","sessions":["S7"],"sort":"Seung Jae YANG"},{"name":"Sung Yun YANG","aff":"Chungnam National University, Republic of Korea","country":"South Korea","sessions":["S8"],"sort":"Sung Yun YANG"},{"name":"Eiji YASHIMA","aff":"National Tsing Hua University, Taiwan / Nagoya University, Japan","country":"Japan","sessions":["IDS5"],"sort":"Eiji YASHIMA"},{"name":"Chunhong YE","aff":"ShanghaiTech University, China","country":"China","sessions":["S3"],"sort":"Chunhong YE"},{"name":"Hyeonuk YEO","aff":"Korea Research Institute of Chemical Technology (KRICT), Republic of Korea","country":"South Korea","sessions":["S7"],"sort":"Hyeonuk YEO"},{"name":"Bongjun YEOM","aff":"Hanyang University, Republic of Korea","country":"South Korea","sessions":["S7"],"sort":"Bongjun YEOM"},{"name":"Gi-Ra YI","aff":"POSTECH, Republic of Korea","country":"South Korea","sessions":["IDS2"],"sort":"Gi-Ra YI"},{"name":"Hyuk Sang YOO","aff":"Kangwon National University, Republic of Korea","country":"South Korea","sessions":["IDS2"],"sort":"Hyuk Sang YOO"},{"name":"Chang-Min YOON","aff":"Inha University, Republic of Korea","country":"South Korea","sessions":["S7"],"sort":"Chang-Min YOON"},{"name":"Kenji YOSHIMOTO","aff":"Kanazawa University, Japan","country":"Japan","sessions":["S10"],"sort":"Kenji YOSHIMOTO"},{"name":"Jiashing YU","aff":"National Taiwan University, Taiwan","country":"Taiwan","sessions":["S8"],"sort":"Jiashing YU"},{"name":"Seung-Ho YU","aff":"Korea University, Korea","country":"South Korea","sessions":["IDS4"],"sort":"Seung-Ho YU"},{"name":"Yanhao YU","aff":"Southern University of Science and Technology, China","country":"China","sessions":["S5"],"sort":"Yanhao YU"},{"name":"Hongseok YUN","aff":"Hanyang University, Republic of Korea","country":"South Korea","sessions":["S4"],"sort":"Hongseok YUN"},{"name":"Hongbo ZENG","aff":"University of Alberta, Canada","country":"Canada","sessions":["S2"],"sort":"Hongbo ZENG"},{"name":"Ning ZHENG","aff":"Zhejiang University, China","country":"China","sessions":["S9","S14"],"sort":"Ning ZHENG"},{"name":"Danqing Bonnie ZHU","aff":"The Hong Kong University of Science and Technology, Hong Kong","country":"Hong Kong","sessions":["S8"],"sort":"Danqing Bonnie ZHU"},{"name":"Yingping ZOU","aff":"Central South University, China","country":"China","sessions":["S12"],"sort":"Yingping ZOU"}],"days":[{"date":"2026-09-28","day":"Mon","blocks":[{"start":"13:00","end":"17:30","item":"Registration","type":"Admin","room":"","note":""},{"start":"14:00","end":"17:00","item":"Graduate Student Oral Session (GS1-GS5)","type":"Session","room":"","note":""},{"start":"15:30","end":"16:30","item":"Council Member Meeting","type":"Meeting","room":"Room 202","note":""},{"start":"17:00","end":"18:30","item":"Welcome Reception","type":"Social","room":"Room 205","note":""}]},{"date":"2026-09-29","day":"Tue","blocks":[{"start":"07:30","end":"17:00","item":"Registration","type":"Admin","room":"","note":""},{"start":"08:30","end":"09:30","item":"Poster Session 1","type":"Poster","room":"Room 301","note":""},{"start":"09:30","end":"10:00","item":"Opening Ceremony","type":"Ceremony","room":"Room 205","note":""},{"start":"10:00","end":"10:40","item":"Plenary Lecture 1","type":"Plenary","room":"Room 205","note":""},{"start":"10:40","end":"10:50","item":"Break","type":"Break","room":"","note":""},{"start":"10:50","end":"12:20","item":"Scientific Program 1 (Keynote/Invited/Oral)","type":"Parallel","room":"","note":""},{"start":"12:20","end":"14:00","item":"Lunch","type":"Break","room":"","note":""},{"start":"14:00","end":"14:40","item":"Plenary Lecture 2","type":"Plenary","room":"Room 205","note":""},{"start":"14:40","end":"15:00","item":"Break","type":"Break","room":"","note":""},{"start":"15:00","end":"16:30","item":"Scientific Program 2 (Keynote/Invited/Oral)","type":"Parallel","room":"","note":""},{"start":"16:30","end":"16:40","item":"Break","type":"Break","room":"","note":""},{"start":"16:40","end":"17:30","item":"Scientific Program 3 (Keynote/Invited)","type":"Parallel","room":"","note":""},{"start":"17:30","end":"18:30","item":"PSK General Meeting","type":"Meeting","room":"Room 205","note":""}]},{"date":"2026-09-30","day":"Wed","blocks":[{"start":"07:30","end":"17:00","item":"Registration","type":"Admin","room":"","note":""},{"start":"08:30","end":"09:30","item":"Poster Session 2","type":"Poster","room":"Room 301","note":""},{"start":"09:30","end":"10:10","item":"Plenary Lecture 3","type":"Plenary","room":"Room 205","note":""},{"start":"10:10","end":"10:20","item":"Break","type":"Break","room":"","note":""},{"start":"10:20","end":"12:20","item":"Scientific Program 4 (Keynote/Invited/Oral)","type":"Parallel","room":"","note":""},{"start":"12:20","end":"14:00","item":"Lunch","type":"Break","room":"","note":""},{"start":"14:00","end":"14:40","item":"Plenary Lecture 4","type":"Plenary","room":"Room 205","note":""},{"start":"14:40","end":"15:00","item":"Break","type":"Break","room":"","note":""},{"start":"15:00","end":"16:15","item":"Scientific Program 5 (Keynote/Invited)","type":"Parallel","room":"","note":"end time not printed on site; inferred from next break"},{"start":"16:15","end":"16:25","item":"Break","type":"Break","room":"","note":""},{"start":"16:25","end":"17:40","item":"Scientific Program 6 (Keynote/Invited)","type":"Parallel","room":"","note":""},{"start":"18:30","end":"20:30","item":"Banquet","type":"Social","room":"","note":""}]},{"date":"2026-10-01","day":"Thu","blocks":[{"start":"07:30","end":"17:00","item":"Registration","type":"Admin","room":"","note":""},{"start":"08:30","end":"09:30","item":"Poster Session 3","type":"Poster","room":"Room 301","note":""},{"start":"09:30","end":"10:10","item":"Plenary Lecture 5","type":"Plenary","room":"Room 205","note":""},{"start":"10:10","end":"10:20","item":"Break","type":"Break","room":"","note":""},{"start":"10:20","end":"12:20","item":"Scientific Program 7 (Keynote/Invited/Oral)","type":"Parallel","room":"","note":""},{"start":"12:20","end":"14:00","item":"Lunch","type":"Break","room":"","note":""},{"start":"14:00","end":"15:30","item":"Scientific Program 8 (Keynote/Invited/Oral)","type":"Parallel","room":"","note":""},{"start":"15:30","end":"15:50","item":"Break","type":"Break","room":"","note":""},{"start":"15:50","end":"17:20","item":"Scientific Program 9 (Keynote/Invited/Oral)","type":"Parallel","room":"","note":""},{"start":"17:20","end":"17:40","item":"PSK50 Student Presentation Award","type":"Ceremony","room":"Room 205","note":""}]}]};
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const TRACK = Object.fromEntries(DATA.tracks.map(t => [t.code, t]));
+const hue = code => TRACK[code] ? `hsl(${TRACK[code].hue} 38% 40%)` : 'var(--graphite)';
+
+// Sessions the user has starred. In-memory by design: this file is meant to be
+// opened from disk, copied and shared, so it never writes to the browser.
+const plan = new Set();
+let planOnly = false;
+let query = '';
+
+/* ---------------------------------------------------------------- helpers */
+const mins = hm => { const [h, m] = hm.split(':').map(Number); return h * 60 + m; };
+const T0 = mins('07:30'), T1 = mins('20:30');
+const pct = m => ((m - T0) / (T1 - T0)) * 100;
+
+function hi(text) {
+  const t = esc(text);
+  if (!query) return t;
+  const re = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'ig');
+  return t.replace(re, '<mark>$1</mark>');
+}
+
+const matches = p =>
+  !query ||
+  [p.name, p.aff, p.country, p.sessions.join(' '),
+   ...p.sessions.map(c => TRACK[c] ? TRACK[c].title : '')]
+    .join(' ').toLowerCase().includes(query.toLowerCase());
+
+const visibleTracks = () =>
+  DATA.tracks.filter(t => !planOnly || plan.has(t.code));
+
+const peopleOf = code => DATA.people.filter(p => p.sessions.includes(code));
+
+/* ---------------------------------------------------------------- schedule */
+// Registration runs underneath a whole day, so blocks genuinely overlap. Pack
+// them into lanes — first lane where nothing collides — instead of letting the
+// later block paint over the earlier one.
+function lanes(blocks) {
+  const ends = [];
+  return blocks.map(b => {
+    const s = mins(b.start), e = mins(b.end);
+    let i = ends.findIndex(t => t <= s);
+    if (i < 0) { i = ends.length; }
+    ends[i] = e;
+    return i;
+  });
+}
+
+const SHORT = {
+  'Graduate Student Oral Session (GS1-GS5)': 'Graduate student orals',
+  'PSK50 Student Presentation Award': 'Student awards',
+  'Council Member Meeting': 'Council meeting',
+};
+const shorten = s => SHORT[s] || s.replace(/\s*\(.*$/, '');
+
+// Second-tier label for narrow blocks: the identifying number is the part worth
+// keeping when only a few characters fit.
+function compact(s) {
+  let m = s.match(/^Scientific Program (\d+)/); if (m) return 'SP' + m[1];
+  m = s.match(/^Plenary Lecture (\d+)/); if (m) return 'PL' + m[1];
+  m = s.match(/^Poster Session (\d+)/); if (m) return 'P' + m[1];
+  return { 'Opening Ceremony': 'Opening', 'Welcome Reception': 'Welcome',
+           'PSK General Meeting': 'PSK meeting', 'Council Member Meeting': 'Council',
+           'PSK50 Student Presentation Award': 'Awards' }[s] || '';
+}
+
+const LANE_H = 16, LANE_GAP = 2;
+const CHAR_W = 5.4, TRACK_PX = 780;   // approximate track width for label fitting
+const fitsIn = (widthPct, text) =>
+  text && (widthPct / 100) * TRACK_PX > text.length * CHAR_W + 10;
+
+function bestLabel(item, widthPct) {
+  // Numbered items read as a sequence across the day, so the short form is the
+  // better label wherever one exists — not merely a fallback for narrow blocks.
+  const c = compact(item);
+  if (c) return fitsIn(widthPct, c) ? c : '';
+  const full = shorten(item);
+  return fitsIn(widthPct, full) ? full : '';
+}
+
+function renderSchedule() {
+  const hours = [];
+  for (let h = 8; h <= 20; h += 2) hours.push(h);
+
+  const chains = DATA.days.map((d, di) => {
+    const ln = lanes(d.blocks);
+    const nLanes = Math.max(...ln) + 1;
+    const h = nLanes * LANE_H + (nLanes - 1) * LANE_GAP;
+    const segs = d.blocks.map((b, bi) => {
+      const l = pct(mins(b.start)), w = pct(mins(b.end)) - l;
+      return `<button class="seg t-${esc(b.type)}"
+        style="left:${l}%;width:${w}%;top:${ln[bi] * (LANE_H + LANE_GAP)}px;height:${LANE_H}px"
+        data-day="${di}" data-blk="${bi}"
+        title="${esc(b.item)} · ${b.start}–${b.end}${b.room ? ' · ' + esc(b.room) : ''}">
+        <span>${esc(bestLabel(b.item, w))}</span></button>`;
+    }).join('');
+    return `<div class="chain">
+      <div class="lab">${esc(d.day)}<i>${d.date.slice(5).replace('-', '/')}</i></div>
+      <div class="track" style="height:${h}px">${segs}</div>
+    </div>`;
+  }).join('');
+
+  const axis = `<div class="axis"><div></div><div class="marks">${
+    hours.map(h => `<b style="left:${pct(h * 60)}%">${h}:00</b>`).join('')
+  }</div></div>`;
+
+  const legend = ['Plenary', 'Parallel', 'Session', 'Poster', 'Ceremony', 'Social', 'Meeting', 'Break']
+    .map(t => `<span><i class="sw t-${t}"></i>${t}</span>`).join('');
+
+  const days = DATA.days.map((d, di) => {
+    const rows = d.blocks.map((b, bi) => {
+      const quiet = b.type === 'Break' || b.type === 'Admin';
+      return `<div class="row${quiet ? ' quiet' : ''}" id="b${di}-${bi}">
+        <div class="t">${b.start}–${b.end}</div>
+        <div class="n">${hi(b.item)}${b.note ? `<em>${esc(b.note)}</em>` : ''}</div>
+        <div class="r">${esc(b.room || '')}</div>
+      </div>`;
+    }).join('');
+    const wd = new Date(d.date + 'T00:00').toLocaleDateString('en-GB',
+      { weekday: 'long', day: 'numeric', month: 'long' });
+    return `<div class="day"><h3>${wd}</h3>${rows}</div>`;
+  }).join('');
+
+  $('#v-schedule').innerHTML = `
+    <h2 class="sec">Four days, at a glance</h2>
+    <p class="lede">Each bar is one day from 7:30 to 20:30. Click a block to jump to it.</p>
+    <div class="chains">${chains}${axis}<div class="legend">${legend}</div></div>
+    <div class="note">The nine <b>Scientific Program</b> blocks each run 26 tracks in parallel,
+      but the organisers have not published which track sits in which block or room. Use
+      Sessions to see who is speaking in each track.</div>
+    ${days}`;
+
+  $$('#v-schedule .seg').forEach(s => s.onclick = () => {
+    $$('#v-schedule .seg').forEach(x => x.dataset.cur = '0');
+    s.dataset.cur = '1';
+    const el = $(`#b${s.dataset.day}-${s.dataset.blk}`);
+    el?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+  });
+}
+
+/* ---------------------------------------------------------------- sessions */
+function renderSessions() {
+  const list = visibleTracks().map(t => {
+    const ppl = peopleOf(t.code).filter(matches);
+    const hit = ppl.length > 0 ||
+      !query || (t.code + ' ' + t.title).toLowerCase().includes(query.toLowerCase());
+    if (!hit) return '';
+    const body = ppl.length
+      ? ppl.map(p => `<div class="who"><b>${hi(p.name)}</b><i>${hi(p.aff)}</i></div>`).join('')
+      : `<div class="who"><i>No invited speakers announced for this track yet.</i></div>`;
+    return `<div class="trk" style="--hue:${hue(t.code)}">
+      <div class="trk-h">
+        <div class="trk-code">${esc(t.code)}</div>
+        <p class="trk-t">${hi(t.title)}</p>
+        <div class="trk-meta">
+          <span class="count">${t.n || '—'}</span>
+          <button class="disc" data-open="${t.code}">Speakers</button>
+          <button class="star" data-star="${t.code}" data-on="${plan.has(t.code) ? 1 : 0}"
+            aria-label="Add ${esc(t.code)} to my plan">★</button>
+        </div>
+      </div>
+      <div class="trk-body" data-body="${t.code}" ${query ? '' : 'hidden'}>${body}</div>
+      <a class="src" href="${esc(t.url)}" target="_blank" rel="noopener">Full paper list on polymer.or.kr</a>
+    </div>`;
+  }).join('');
+
+  $('#v-sessions').innerHTML = `
+    <h2 class="sec">26 tracks</h2>
+    <p class="lede">Star the tracks you care about, then switch on <b>My plan</b> to
+      narrow every view down to them.</p>
+    ${list || `<p class="empty">Nothing matches “${esc(query)}”. Try a lab, a country or a topic.</p>`}`;
+
+  $$('[data-open]').forEach(b => b.onclick = () => {
+    const body = $(`[data-body="${b.dataset.open}"]`);
+    body.hidden = !body.hidden;
+    b.textContent = body.hidden ? 'Speakers' : 'Hide';
+  });
+  bindStars();
+}
+
+/* ---------------------------------------------------------------- speakers */
+let sortKey = 'name', sortDir = 'asc', fCountry = '', fSession = '';
+
+function renderSpeakers() {
+  const countries = [...new Set(DATA.people.map(p => p.country))].sort();
+  let rows = DATA.people.filter(p =>
+    matches(p) &&
+    (!fCountry || p.country === fCountry) &&
+    (!fSession || p.sessions.includes(fSession)) &&
+    (!planOnly || p.sessions.some(c => plan.has(c))));
+
+  const key = p => sortKey === 'name' ? p.name.split(' ').pop().toLowerCase()
+    : sortKey === 'aff' ? p.aff.toLowerCase()
+      : sortKey === 'country' ? p.country.toLowerCase()
+        : (TRACK[p.sessions[0]] ? DATA.tracks.indexOf(TRACK[p.sessions[0]]) : 99);
+  rows = rows.sort((a, b) => {
+    const x = key(a), y = key(b);
+    return (x > y ? 1 : x < y ? -1 : 0) * (sortDir === 'asc' ? 1 : -1);
+  });
+
+  const opts = (arr, sel) => arr.map(v =>
+    `<option value="${esc(v)}"${v === sel ? ' selected' : ''}>${esc(v)}</option>`).join('');
+
+  $('#v-speakers').innerHTML = `
+    <h2 class="sec">Invited speakers <span class="count">${rows.length} of ${DATA.people.length}</span></h2>
+    <p class="lede">Everyone the organisers have announced. Sort by any column.</p>
+    <div class="filters">
+      <select class="f" id="fc"><option value="">Every country</option>${opts(countries, fCountry)}</select>
+      <select class="f" id="fs"><option value="">Every track</option>${
+        DATA.tracks.filter(t => t.n).map(t =>
+          `<option value="${t.code}"${t.code === fSession ? ' selected' : ''}>${esc(t.code)} — ${esc(t.title.slice(0, 46))}</option>`).join('')
+      }</select>
+    </div>
+    ${rows.length ? `<table class="people"><thead><tr>
+        <th data-k="name"${sortKey === 'name' ? ` data-dir="${sortDir}"` : ''}>Name</th>
+        <th data-k="aff"${sortKey === 'aff' ? ` data-dir="${sortDir}"` : ''}>Affiliation</th>
+        <th data-k="country"${sortKey === 'country' ? ` data-dir="${sortDir}"` : ''}>Country</th>
+        <th data-k="session"${sortKey === 'session' ? ` data-dir="${sortDir}"` : ''}>Track</th>
+      </tr></thead><tbody>${rows.map(p => `<tr>
+        <td class="nm">${hi(p.name)}</td>
+        <td class="af">${hi(p.aff)}</td>
+        <td>${esc(p.country)}</td>
+        <td class="se">${p.sessions.map(c =>
+          `<span class="pill" style="--hue:${hue(c)}">${esc(c)}</span>`).join('')}</td>
+      </tr>`).join('')}</tbody></table>`
+      : `<p class="empty">No speaker matches those filters. Clear the search or pick a wider country.</p>`}`;
+
+  $('#fc').onchange = e => { fCountry = e.target.value; renderSpeakers(); };
+  $('#fs').onchange = e => { fSession = e.target.value; renderSpeakers(); };
+  $$('#v-speakers th').forEach(th => th.onclick = () => {
+    if (sortKey === th.dataset.k) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else { sortKey = th.dataset.k; sortDir = 'asc'; }
+    renderSpeakers();
+  });
+}
+
+/* ---------------------------------------------------------------- talks */
+let talks = null;
+
+// Minimal RFC-4180 reader: handles quoted fields, embedded commas and newlines.
+function parseCSV(text) {
+  const rows = [];
+  let row = [], val = '', q = false;
+  text = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { val += '"'; i++; } else q = false; }
+      else val += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(val); val = ''; }
+    else if (c === '\n') { row.push(val); rows.push(row); row = []; val = ''; }
+    else val += c;
+  }
+  if (val || row.length) { row.push(val); rows.push(row); }
+  const head = rows.shift() || [];
+  return rows.filter(r => r.some(v => v.trim()))
+    .map(r => Object.fromEntries(head.map((h, i) => [h.trim(), (r[i] || '').trim()])));
+}
+
+const dayName = d => d
+  ? new Date(d + 'T00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+  : 'Day not announced';
+
+let talkGroup = 'day';
+
+function renderTalks() {
+  const el = $('#v-talks');
+  if (!talks && loadState === 'loading') {
+    el.innerHTML = `<h2 class="sec">Talks</h2>
+      <p class="lede">Loading the latest scrape…</p>`;
+    return;
+  }
+  if (!talks) {
+    el.innerHTML = `
+      <h2 class="sec">Talks</h2>
+      <p class="lede">The site ships with tracks and invited speakers. Individual talks,
+        their chairs and their abstracts come from the scraper — load its output here.</p>
+      <div class="drop" id="drop">
+        <p>Drop <code>psk50_presentations.csv</code> here, and
+           <code>psk50_abstracts.csv</code> after it if you ran the abstract pass.
+           Nothing is uploaded; the files are read in this tab.</p>
+        <input type="file" id="file" accept=".csv" multiple>
+      </div>`;
+    wireDrop();
+    return;
+  }
+
+  const rows = talks.filter(t =>
+    (!planOnly || plan.has(t.session)) &&
+    (!query || [t.title, t.presenter, t.affiliation, t.chair, t.session, t.abstract]
+      .join(' ').toLowerCase().includes(query.toLowerCase())));
+
+  const groups = {};
+  rows.forEach(t => {
+    const k = talkGroup === 'day' ? (t.date || '') + '||' + (t.room || '')
+                                  : t.session || '—';
+    (groups[k] ||= []).push(t);
+  });
+  const keys = Object.keys(groups).sort((a, b) => talkGroup === 'day'
+    ? a.localeCompare(b)
+    : DATA.tracks.findIndex(x => x.code === a) - DATA.tracks.findIndex(x => x.code === b));
+
+  const blocks = keys.map(k => {
+    const list = groups[k].slice().sort((a, b) =>
+      (a.date + a.start).localeCompare(b.date + b.start));
+    let head, code;
+    if (talkGroup === 'day') {
+      const [d, room] = k.split('||');
+      code = [...new Set(list.map(t => t.session))][0];
+      head = `${dayName(d)}<span class="count">${room || 'room not announced'} · ${list.length}</span>`;
+    } else {
+      code = k;
+      head = `${esc(k)}${TRACK[k] ? ' — ' + esc(TRACK[k].title) : ''}<span class="count">${list.length}</span>`;
+    }
+    let lastChair = null;
+    const body = list.map(t => {
+      let chairRow = '';
+      if (t.chair && t.chair !== lastChair) {
+        lastChair = t.chair;
+        chairRow = `<div class="chairbar">Chair: ${hi(t.chair)}</div>`;
+      }
+      const when = t.start ? `${t.start}–${t.end}` : '—';
+      return chairRow + `<div class="talk" style="--hue:${hue(t.session)}">
+        <div class="c">${esc(when)}</div>
+        <div class="ti">${hi(t.title)}
+          <i>${hi(t.presenter || '')}${t.affiliation ? ' · ' + hi(t.affiliation) : ''}
+             ${t.type ? '· ' + esc(t.type) : ''}${talkGroup === 'session' && t.room ? ' · ' + esc(t.room) : ''}</i>
+          ${t.abstract ? `<details><summary>Abstract</summary><p>${hi(t.abstract)}</p></details>` : ''}
+        </div></div>`;
+    }).join('');
+    return `<div class="day"><h3>${head}</h3>${body}</div>`;
+  }).join('');
+
+  const withAbs = talks.filter(t => t.abstract).length;
+  const chairs = new Set(talks.map(t => t.chair).filter(Boolean)).size;
+  el.innerHTML = `
+    <h2 class="sec">Talks <span class="count">${rows.length} of ${talks.length}</span></h2>
+    <p class="lede">Podium talks from your scraper output — ${chairs} chairs,
+      ${withAbs} abstracts loaded.</p>
+    <div class="filters">
+      <button class="planbtn" id="gday" data-on="${talkGroup === 'day' ? 1 : 0}">By day and room</button>
+      <button class="planbtn" id="gses" data-on="${talkGroup === 'session' ? 1 : 0}">By track</button>
+    </div>
+    ${blocks || `<p class="empty">Nothing matches “${esc(query)}”.</p>`}`;
+
+  $('#gday').onclick = () => { talkGroup = 'day'; renderTalks(); };
+  $('#gses').onclick = () => { talkGroup = 'session'; renderTalks(); };
+}
+
+function ingest(text) {
+  const rows = parseCSV(text);
+  if (!rows.length) return alert('That CSV had no rows.');
+  if (!('pid' in rows[0])) return alert('No "pid" column — is this the scraper output?');
+  const byPid = new Map((talks || []).map(t => [t.pid, t]));
+  rows.forEach(r => {
+    const cur = byPid.get(r.pid) || { pid: r.pid };
+    for (const [k, v] of Object.entries(r)) if (v) cur[k] = v;
+    byPid.set(r.pid, cur);
+  });
+  talks = [...byPid.values()];
+  renderTalks();
+}
+
+function wireDrop() {
+  const drop = $('#drop'), file = $('#file');
+  if (!drop) return;
+  const read = fs => [...fs].forEach(f => f.text().then(ingest));
+  file.onchange = e => read(e.target.files);
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.add('over');
+  }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.remove('over');
+  }));
+  drop.addEventListener('drop', e => read(e.dataTransfer.files));
+}
+
+/* ---------------------------------------------------------------- plan */
+function bindStars() {
+  $$('[data-star]').forEach(b => b.onclick = () => {
+    const c = b.dataset.star;
+    plan.has(c) ? plan.delete(c) : plan.add(c);
+    b.dataset.on = plan.has(c) ? 1 : 0;
+    $('#planN').textContent = plan.size;
+    if (planOnly) renderAll();
+  });
+}
+
+function savePlan() {
+  if (!plan.size) return alert('Star a track or two first — the Sessions tab has all 26.');
+  const picked = DATA.tracks.filter(t => plan.has(t.code));
+  const body = {
+    conference: DATA.meta.name, dates: DATA.meta.dates,
+    saved: new Date().toISOString().slice(0, 10),
+    tracks: picked.map(t => ({
+      code: t.code, title: t.title, url: t.url,
+      speakers: peopleOf(t.code).map(p => ({ name: p.name, affiliation: p.aff })),
+    })),
+  };
+  const url = URL.createObjectURL(
+    new Blob([JSON.stringify(body, null, 2)], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = 'psk50-my-plan.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ---------------------------------------------------------------- shell */
+let view = 'schedule';
+let loadState = 'idle';   // idle | loading | ok | none
+
+function renderAll() {
+  ({ schedule: renderSchedule, sessions: renderSessions,
+     speakers: renderSpeakers, talks: renderTalks }[view])();
+}
+
+function show(v) {
+  view = v;
+  $$('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.v === v));
+  $$('.view').forEach(s => s.hidden = s.id !== 'v-' + v);
+  renderAll();
+}
+
+// On GitHub Pages the workflow writes talks.json next to this file, so the Talks
+// tab fills itself. Opened from disk there is no fetch to make, and the drop zone
+// stays as the way in.
+async function loadTalks() {
+  if (!/^https?:$/.test(location.protocol)) { loadState = 'none'; return; }
+  loadState = 'loading';
+  try {
+    const res = await fetch('talks.json', { cache: 'no-cache' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const body = await res.json();
+    const rows = Array.isArray(body) ? body : body.talks;
+    if (!Array.isArray(rows) || !rows.length) throw new Error('no talks in file');
+    talks = rows;
+    if (body.generated) $('#gen').textContent = 'Talks updated ' + body.generated;
+    loadState = 'ok';
+  } catch (e) {
+    console.warn('talks.json not loaded:', e.message);
+    loadState = 'none';
+  }
+  if (view === 'talks') renderTalks();
+}
+
+function init() {
+  $('#mDates').textContent = DATA.meta.dates;
+  $('#mSub').textContent = DATA.meta.subtitle;
+  $('#fSrc').innerHTML =
+    `${DATA.meta.nTracks} tracks and ${DATA.meta.nSpeakers} invited speakers, read from ` +
+    `<a href="https://${DATA.meta.source}" target="_blank" rel="noopener">${esc(DATA.meta.source)}</a> ` +
+    `on ${DATA.meta.extracted}.`;
+
+  $$('.tab').forEach(t => t.onclick = () => show(t.dataset.v));
+  let deb;
+  $('#q').oninput = e => {
+    clearTimeout(deb);
+    deb = setTimeout(() => { query = e.target.value.trim(); renderAll(); }, 140);
+  };
+  $('#planToggle').onclick = e => {
+    planOnly = !planOnly;
+    e.currentTarget.dataset.on = planOnly ? 1 : 0;
+    renderAll();
+  };
+  $('#planSave').onclick = savePlan;
+  show('schedule');
+  loadTalks();
+}
+
+init();
+
+</script>
+</body>
+</html>
