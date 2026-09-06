@@ -103,6 +103,21 @@ Six of 1,135 rows still come out scrambled — `pdftotext` interleaves their
 wrapped cells — and those carry a `check` flag that the site shows as a
 "check PDF" badge rather than passing a mangled name off as clean data.
 
+## Colour and the schedule grid
+
+White ground, pastel blocks. Colour is load-bearing — block type on the
+schedule, track identity everywhere else — so it is checked rather than picked
+by eye: the 26 track colours are solved per hue at build time
+(`gen_data.py: track_color`) for at least 4.5:1 against white, because a fixed
+lightness leaves the blues comfortable and the yellows invisible.
+
+The schedule reads like the organisers' own grid: time down, the four days
+across. Registration spans a whole day, so it is drawn as a full-width backdrop
+rather than taking a lane — otherwise it squeezed the actual programme into a
+third of Monday. Blocks that genuinely clash (graduate orals and the council
+meeting) still split into lanes. Below 820px the grid is hidden and the
+day-by-day tables underneath carry the same information.
+
 ## Layout on wide screens
 
 The container grows to about 1470px and then stops. Past that the extra room

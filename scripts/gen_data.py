@@ -1,4 +1,4 @@
-import csv, json, re, collections, pathlib
+import colorsys, csv, json, re, collections, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -60,6 +60,32 @@ for p in people:
     for c in p["sessions"]:
         count[c] += 1
 
+def _lum(rgb):
+    c = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in rgb]
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+
+
+def track_color(hue_deg, target=4.7):
+    """Darkest-but-lightest colour at this hue that still reads on white.
+
+    A fixed lightness across the wheel does not work: at 52% L the blues clear
+    4.5:1 easily while the yellows sit near 2:1 and vanish. Solve per hue so
+    every one of the 26 tracks is equally legible. The target carries a little
+    headroom because the result is rounded to 8-bit channels afterwards.
+    """
+    lo, hi = 0.15, 0.75
+    for _ in range(24):
+        mid = (lo + hi) / 2
+        rgb = colorsys.hls_to_rgb(hue_deg / 360, mid, 0.55)
+        contrast = 1.05 / (_lum(rgb) + 0.05)
+        if contrast >= target:
+            lo = mid                      # still legible, try lighter
+        else:
+            hi = mid
+    r, g, b = colorsys.hls_to_rgb(hue_deg / 360, lo, 0.55)
+    return "#%02X%02X%02X" % (round(r * 255), round(g * 255), round(b * 255))
+
+
 tracks = []
 for i, s in enumerate(sessions):
     tracks.append({
@@ -69,6 +95,7 @@ for i, s in enumerate(sessions):
         "url": s["program_url"],
         "n": count.get(s["code"], 0),
         "hue": round(((i * 360 / len(sessions)) + 205) % 360),
+        "color": track_color(((i * 360 / len(sessions)) + 205) % 360),
     })
 
 days, seen = [], {}

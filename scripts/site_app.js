@@ -4,7 +4,8 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const TRACK = Object.fromEntries(DATA.tracks.map(t => [t.code, t]));
-const hue = code => TRACK[code] ? `hsl(${TRACK[code].hue} 38% 40%)` : 'var(--graphite)';
+// Solved per hue at build time so all 26 clear 4.5:1 on white — see gen_data.py
+const hue = code => (TRACK[code] && TRACK[code].color) || 'var(--graphite)';
 
 // Sessions the user has starred. In-memory by design: this file is meant to be
 // opened from disk, copied and shared, so it never writes to the browser.
@@ -44,7 +45,7 @@ function lanes(blocks) {
   return blocks.map(b => {
     const s = mins(b.start), e = mins(b.end);
     let i = ends.findIndex(t => t <= s);
-    if (i < 0) { i = ends.length; }
+    if (i < 0) i = ends.length;
     ends[i] = e;
     return i;
   });
@@ -57,8 +58,6 @@ const SHORT = {
 };
 const shorten = s => SHORT[s] || s.replace(/\s*\(.*$/, '');
 
-// Second-tier label for narrow blocks: the identifying number is the part worth
-// keeping when only a few characters fit.
 function compact(s) {
   let m = s.match(/^Scientific Program (\d+)/); if (m) return 'SP' + m[1];
   m = s.match(/^Plenary Lecture (\d+)/); if (m) return 'PL' + m[1];
@@ -68,45 +67,53 @@ function compact(s) {
            'PSK50 Student Presentation Award': 'Awards' }[s] || '';
 }
 
-const LANE_H = 16, LANE_GAP = 2;
-const CHAR_W = 5.4, TRACK_PX = 780;   // approximate track width for label fitting
-const fitsIn = (widthPct, text) =>
-  text && (widthPct / 100) * TRACK_PX > text.length * CHAR_W + 10;
-
-function bestLabel(item, widthPct) {
-  // Numbered items read as a sequence across the day, so the short form is the
-  // better label wherever one exists — not merely a fallback for narrow blocks.
-  const c = compact(item);
-  if (c) return fitsIn(widthPct, c) ? c : '';
-  const full = shorten(item);
-  return fitsIn(widthPct, full) ? full : '';
-}
+const PX_PER_MIN = 1.15;                  // 07:30–20:30 lands a little under 900px
+const MIN_LABEL_H = 20;                   // below this a block cannot hold a name
+const MIN_TIME_H = 32;                    // and below this it cannot hold the time too
+// Registration spans the whole day. Treated as a lane it would squeeze the real
+// programme into a third of the column, so it is drawn full width behind
+// everything instead — which is also how the organisers' own grid reads.
+const BACKDROP = new Set(['Admin']);
 
 function renderSchedule() {
-  const hours = [];
-  for (let h = 8; h <= 20; h += 2) hours.push(h);
+  const H = (T1 - T0) * PX_PER_MIN;
 
-  const chains = DATA.days.map((d, di) => {
-    const ln = lanes(d.blocks);
-    const nLanes = Math.max(...ln) + 1;
-    const h = nLanes * LANE_H + (nLanes - 1) * LANE_GAP;
-    const segs = d.blocks.map((b, bi) => {
-      const l = pct(mins(b.start)), w = pct(mins(b.end)) - l;
-      return `<button class="seg t-${esc(b.type)}"
-        style="left:${l}%;width:${w}%;top:${ln[bi] * (LANE_H + LANE_GAP)}px;height:${LANE_H}px"
+  // Hour rules behind the columns, drawn once and shared by every day.
+  const hours = [];
+  for (let h = 8; h <= 20; h++) hours.push(h);
+  const grid = hours.map(h =>
+    `<div class="hline" style="top:${(h * 60 - T0) * PX_PER_MIN}px"></div>`).join('');
+  const ticks = hours.map(h =>
+    `<div class="tick" style="top:${(h * 60 - T0) * PX_PER_MIN}px">${h}:00</div>`).join('');
+
+  const cols = DATA.days.map((d, di) => {
+    const fore = [], back = [];
+    d.blocks.forEach((b, bi) => (BACKDROP.has(b.type) ? back : fore).push([b, bi]));
+    const ln = lanes(fore.map(([b]) => b));
+    const n = Math.max(1, Math.max(...ln, 0) + 1);
+
+    const seg = (b, bi, left, width, cls) => {
+      const top = (mins(b.start) - T0) * PX_PER_MIN;
+      const h = (mins(b.end) - mins(b.start)) * PX_PER_MIN;
+      const label = compact(b.item) || shorten(b.item);
+      const room = b.room ? ` · ${b.room}` : '';
+      return `<button class="seg${cls} t-${esc(b.type)}"
+        style="top:${top}px;height:${Math.max(h, 3)}px;left:${left}%;width:${width}%"
         data-day="${di}" data-blk="${bi}"
-        title="${esc(b.item)} · ${b.start}–${b.end}${b.room ? ' · ' + esc(b.room) : ''}">
-        <span>${esc(bestLabel(b.item, w))}</span></button>`;
-    }).join('');
-    return `<div class="chain">
-      <div class="lab">${esc(d.day)}<i>${d.date.slice(5).replace('-', '/')}</i></div>
-      <div class="track" style="height:${h}px">${segs}</div>
+        title="${esc(b.item)} · ${b.start}–${b.end}${esc(room)}">
+        ${h >= MIN_LABEL_H ? `<span class="sl">${esc(label)}</span>` : ''}
+        ${h >= MIN_TIME_H ? `<span class="st">${b.start}–${b.end}</span>` : ''}</button>`;
+    };
+
+    const segs = back.map(([b, bi]) => seg(b, bi, 0, 100, ' back')).join('')
+      + fore.map(([b, bi], i) => seg(b, bi, ln[i] * (100 / n), 100 / n, '')).join('');
+    const wd = new Date(d.date + 'T00:00').toLocaleDateString('en-GB',
+      { weekday: 'short', day: 'numeric', month: 'short' });
+    return `<div class="dcol">
+      <div class="dhead">${esc(wd)}</div>
+      <div class="dbody" style="height:${H}px">${grid}${segs}</div>
     </div>`;
   }).join('');
-
-  const axis = `<div class="axis"><div></div><div class="marks">${
-    hours.map(h => `<b style="left:${pct(h * 60)}%">${h}:00</b>`).join('')
-  }</div></div>`;
 
   const legend = ['Plenary', 'Parallel', 'Session', 'Poster', 'Ceremony', 'Social', 'Meeting', 'Break']
     .map(t => `<span><i class="sw t-${t}"></i>${t}</span>`).join('');
@@ -127,11 +134,17 @@ function renderSchedule() {
 
   $('#v-schedule').innerHTML = `
     <h2 class="sec">Four days, at a glance</h2>
-    <p class="lede">Each bar is one day from 7:30 to 20:30. Click a block to jump to it.</p>
-    <div class="chains">${chains}${axis}<div class="legend">${legend}</div></div>
-    <div class="note">The nine <b>Scientific Program</b> blocks each run 26 tracks in parallel,
-      but the organisers have not published which track sits in which block or room. Use
-      Sessions to see who is speaking in each track.</div>
+    <p class="lede">Time runs down, days run across — 7:30 to 20:30.
+      Click a block to jump to its entry below.</p>
+    <div class="gridwrap">
+      <div class="axis"><div class="dhead"></div>
+        <div class="ticks" style="height:${H}px">${ticks}</div></div>
+      ${cols}
+    </div>
+    <div class="legend">${legend}</div>
+    <div class="note">The nine <b>Scientific Program</b> blocks each run 26 tracks in
+      parallel, but the organisers have not published which track sits in which block
+      or room. Use Sessions to see who is speaking in each track.</div>
     ${days}`;
 
   $$('#v-schedule .seg').forEach(s => s.onclick = () => {
