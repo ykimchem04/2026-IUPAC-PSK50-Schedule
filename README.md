@@ -111,12 +111,24 @@ by eye: the 26 track colours are solved per hue at build time
 (`gen_data.py: track_color`) for at least 4.5:1 against white, because a fixed
 lightness leaves the blues comfortable and the yellows invisible.
 
-The schedule reads like the organisers' own grid: time down, the four days
-across. Registration spans a whole day, so it is drawn as a full-width backdrop
-rather than taking a lane — otherwise it squeezed the actual programme into a
-third of Monday. Blocks that genuinely clash (graduate orals and the council
-meeting) still split into lanes. Below 820px the grid is hidden and the
-day-by-day tables underneath carry the same information.
+The schedule runs time down and the four days across, at 0.55px per minute so
+all four fit one screen. A grid you have to scroll is worse than the tables
+underneath it.
+
+What is *not* drawn does most of the work:
+
+- **Breaks** are hairlines, not blocks. A ten-minute break drawn as a filled
+  rectangle carries the same visual weight as a plenary lecture.
+- **Lunch** keeps its label but takes no fill. (It is typed `Break` in the
+  source data, so it has to be matched by name before the hairline rule —
+  otherwise the whole midday disappears.)
+- **Registration** is a 3px rail at the column edge plus a line in the day
+  header. Drawn as a full-height backdrop it turned every gap between sessions
+  into a grey stripe.
+
+Blocks taller than 38px carry a second line — room, or the note that Scientific
+Program 5's end time is inferred. Below 820px the grid is hidden and the
+day-by-day tables carry the same information.
 
 ## Layout on wide screens
 

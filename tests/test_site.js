@@ -21,39 +21,55 @@ ok($('#fSrc').textContent.includes('278'), 'footer states 278 speakers');
 console.log('\n[schedule]');
 ok(!$('#v-schedule').hidden, 'schedule is the default view');
 ok($$('#v-schedule .dcol').length === 4, 'four day columns');
-ok($$('#v-schedule .dhead').length === 5, 'four day headers plus the time axis');
-const segs = $$('#v-schedule .seg');
-ok(segs.length === 39, `39 blocks drawn (got ${segs.length})`);
 
-// Time runs downward now: every block's top/height must sit inside the day.
+const segs = $$('#v-schedule .seg');
+const brks = $$('#v-schedule .brk');
+const rails = $$('#v-schedule .rail');
+
+// 39 glance blocks = 4 registrations (rails) + 8 breaks (hairlines) + 27 drawn
+ok(rails.length === 4, 'each day gets one registration rail, not a background slab');
+ok(brks.length === 8, 'the eight ten-minute breaks are hairlines, not blocks');
+ok(segs.length === 27, `27 blocks drawn (got ${segs.length})`);
+ok(segs.length + brks.length + rails.length === 39, 'every glance entry is accounted for');
+
+ok($$('#v-schedule .seg.bare').length === 3,
+   'the three lunches keep a label but take no fill');
+ok([...segs].filter(s => s.className.includes('t-Break')).length === 0,
+   'nothing is drawn with break colouring any more');
+const lunch = $$('#v-schedule .seg.bare')[0];
+ok(lunch.textContent.includes('Lunch') && lunch.textContent.includes('12:20'),
+   'lunch still names itself and its hours');
+
+// The whole point of the redesign: four days on one screen.
 const H = parseFloat($('#v-schedule .dbody').style.height);
-ok(H > 500, `day column is ${Math.round(H)}px tall`);
-const outside = segs.filter(s => {
+ok(H > 380 && H < 500, `day column is ${Math.round(H)}px — was ~900 before`);
+const outside = [...segs].filter(s => {
   const top = parseFloat(s.style.top), h = parseFloat(s.style.height);
   return !(top >= -0.5 && h > 0 && top + h <= H + 0.5);
 });
 ok(outside.length === 0, 'every block sits inside 07:30-20:30 vertically');
 
-// Earlier start must sit higher — the whole point of a vertical grid.
-const tue = $$('#v-schedule .dcol')[1].querySelectorAll('.seg:not(.back)');
-const tops = [...tue].map(s => parseFloat(s.style.top));
+const tue = [...$$('#v-schedule .dcol')[1].querySelectorAll('.seg')];
+const tops = tue.map(s => parseFloat(s.style.top));
 ok(tops.every((t, i) => i === 0 || t >= tops[i - 1]),
    'blocks are ordered top to bottom by start time');
+ok(tue.every(s => parseFloat(s.style.height) >= 4), 'no zero-height block');
 
-ok($$('#v-schedule .seg.back').length === 4, 'registration drawn as an all-day backdrop');
-ok([...$$('#v-schedule .seg.back')].every(s => parseFloat(s.style.width) === 100),
-   'the backdrop spans the full column instead of taking a lane');
-const mon = $$('#v-schedule .dcol')[0].querySelectorAll('.seg:not(.back)');
-ok([...mon].some(s => parseFloat(s.style.width) < 100),
+const mon = [...$$('#v-schedule .dcol')[0].querySelectorAll('.seg')];
+ok(mon.some(s => parseFloat(s.style.width) < 100),
    'Monday still splits into lanes where blocks genuinely overlap');
+ok(tue.filter(s => !s.classList.contains('bare'))
+      .every(s => parseFloat(s.style.width) === 100),
+   'Tuesday has nothing overlapping, so its blocks run full width');
 
-ok($$('#v-schedule .hline').length > 0, 'hour rules drawn');
+ok($('#v-schedule .dhead i').textContent.includes('Registration'),
+   'registration is stated in the day header');
 ok($$('#v-schedule .tick').length === 13, '8:00 to 20:00 marked on the axis');
 ok($$('#v-schedule .day').length === 4, 'four expanded day tables');
 ok($('#v-schedule').textContent.includes('not published which track'),
    'states that track-to-slot assignment is unpublished');
-ok($('#v-schedule').textContent.includes('end time not printed'),
-   'SP5 inferred end time is disclosed in place');
+ok($('#v-schedule').innerHTML.includes('end time inferred'),
+   'SP5 inferred end time is disclosed on the block itself');
 click(segs[5]);
 ok(segs[5].dataset.cur === '1', 'clicking a block marks it current');
 

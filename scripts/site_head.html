@@ -95,43 +95,56 @@ h2.sec{
 
 /* ---------- schedule: vertical time grid ---------- */
 .gridwrap{
-  display:grid;grid-template-columns:3.6rem repeat(4,1fr);gap:0 .5rem;
-  margin:0 0 1rem;
+  display:grid;grid-template-columns:3.4rem repeat(4,1fr);gap:0 1.1rem;
+  margin:0 0 .9rem;
 }
 .dhead{
-  font-size:.84rem;font-weight:700;padding:0 0 .4rem;
-  border-bottom:1px solid var(--ink);margin-bottom:.4rem;white-space:nowrap;
+  font-size:.85rem;font-weight:700;padding:0 0 .35rem;
+  border-bottom:1px solid var(--ink);margin-bottom:.5rem;white-space:nowrap;
+}
+.dhead i{
+  display:block;font-style:normal;font-weight:400;font-size:.72rem;
+  color:var(--graphite);margin-top:.15rem;
 }
 .dcol{min-width:0}
-.dbody{position:relative;min-width:0}
+.dbody{position:relative;min-width:0;padding-left:7px}
 .axis .ticks{position:relative}
 .tick{
-  position:absolute;right:.5rem;transform:translateY(-.5em);
+  position:absolute;right:.4rem;transform:translateY(-.5em);
   font-size:.72rem;color:var(--graphite);white-space:nowrap;
 }
-.hline{
-  position:absolute;left:0;right:0;height:1px;background:var(--rule-soft);
+.hline{position:absolute;left:0;right:0;height:1px;background:var(--rule-soft)}
+
+/* Registration: a rail at the column edge, not a slab behind the day. */
+.rail{
+  position:absolute;left:0;width:3px;border-radius:2px;
+  background:var(--rule);
 }
+
+/* A break is the gap between sessions, so it is drawn as one. */
+.brk{
+  position:absolute;left:7px;right:0;height:0;
+  border-top:1px dashed var(--rule);
+}
+
 .seg{
-  position:absolute;border:0;padding:0;cursor:pointer;overflow:hidden;
-  border-radius:3px;font:inherit;text-align:left;
-  box-shadow:inset 0 0 0 1px rgba(27,29,36,.06);
+  position:absolute;left:7px;right:0;border:0;padding:0;cursor:pointer;overflow:hidden;
+  border-radius:3px;font:inherit;text-align:left;color:var(--ink);
+  box-shadow:inset 0 0 0 1px rgba(27,29,36,.07);
 }
 .seg .sl{
-  display:block;padding:.22rem .4rem 0;font-size:.74rem;font-weight:700;
-  line-height:1.15;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;
+  display:block;padding:.15rem .45rem 0;font-size:.73rem;font-weight:700;
+  line-height:1.2;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;
 }
 .seg .st{
-  display:block;padding:0 .4rem;font-size:.66rem;font-weight:500;opacity:.72;
-  white-space:nowrap;
+  display:block;padding:0 .45rem;font-size:.68rem;font-weight:500;
+  color:var(--graphite);white-space:nowrap;text-overflow:ellipsis;overflow:hidden;
 }
-.seg.back{
-  /* the all-day backdrop: present, but never competing with the programme */
-  z-index:0;border-radius:4px;box-shadow:none;
-}
-.seg.back .sl{font-weight:600}
-.seg:not(.back){z-index:1}
+/* Lunch keeps its label but takes no colour — it is not a session. */
+.seg.bare{background:none;box-shadow:none;left:7px;width:auto}
+.seg.bare .sl{font-weight:500;color:var(--graphite);padding-top:.3rem}
 .seg:hover{filter:brightness(.96)}
+.seg.bare:hover{filter:none;color:var(--ink)}
 .seg[data-cur="1"]{box-shadow:inset 0 0 0 2px var(--ink)}
 .seg:focus-visible{outline-offset:-2px}
 .t-Plenary{background:#C6D7F2}
@@ -141,9 +154,6 @@ h2.sec{
 .t-Ceremony{background:#E4D6F1}
 .t-Social{background:#F8DBDF}
 .t-Meeting{background:#E1E4EB}
-.t-Break,.t-Admin{background:#F1F3F7}
-.seg{color:var(--ink)}
-.seg.t-Break,.seg.t-Admin{color:#575D6C}   /* graphite is too light on this fill */
 .legend{
   display:flex;flex-wrap:wrap;gap:.25rem 1.1rem;margin:0 0 .4rem;
   font-size:.78rem;color:var(--graphite);
@@ -420,6 +430,7 @@ footer a{color:var(--graphite)}
   .trk[open],.trk{display:block}
   .trk-body{display:block!important}
   .seg{color:#000;box-shadow:inset 0 0 0 1px #999}
+  .brk,.rail{border-color:#999;background:#999}
 }
 </style>
 </head>

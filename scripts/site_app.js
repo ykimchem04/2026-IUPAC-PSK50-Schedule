@@ -67,55 +67,83 @@ function compact(s) {
            'PSK50 Student Presentation Award': 'Awards' }[s] || '';
 }
 
-const PX_PER_MIN = 1.15;                  // 07:30–20:30 lands a little under 900px
-const MIN_LABEL_H = 20;                   // below this a block cannot hold a name
-const MIN_TIME_H = 32;                    // and below this it cannot hold the time too
-// Registration spans the whole day. Treated as a lane it would squeeze the real
-// programme into a third of the column, so it is drawn full width behind
-// everything instead — which is also how the organisers' own grid reads.
-const BACKDROP = new Set(['Admin']);
+// Half the old scale: all four days fit one screen, which is the only reason to
+// draw a grid rather than read the tables underneath.
+const PX_PER_MIN = 0.55;
+const MIN_LABEL_H = 14;                   // below this a block cannot hold a line
+const TWO_LINE_H = 38;                    // above this the label can breathe onto two
+// Breaks are the gap between sessions, not sessions. Drawn as a filled block they
+// carry the same weight as a plenary; drawn as a hairline they read as what they
+// are. Lunch keeps a label but no fill. Registration spans the whole day, so it
+// gets a rail at the column edge and a line in the header — not a slab behind
+// everything, which turned every gap into a grey stripe.
+const HAIRLINE = new Set(['Break']);
+const isMeal = b => /^(Lunch|Breakfast|Dinner)\b/.test(b.item);
+const QUIET = new Set(['Admin']);
 
 function renderSchedule() {
   const H = (T1 - T0) * PX_PER_MIN;
+  const y = m => (m - T0) * PX_PER_MIN;
 
-  // Hour rules behind the columns, drawn once and shared by every day.
   const hours = [];
   for (let h = 8; h <= 20; h++) hours.push(h);
-  const grid = hours.map(h =>
-    `<div class="hline" style="top:${(h * 60 - T0) * PX_PER_MIN}px"></div>`).join('');
+  const grid = hours.map(h => `<div class="hline" style="top:${y(h * 60)}px"></div>`).join('');
   const ticks = hours.map(h =>
-    `<div class="tick" style="top:${(h * 60 - T0) * PX_PER_MIN}px">${h}:00</div>`).join('');
+    `<div class="tick" style="top:${y(h * 60)}px">${h}:00</div>`).join('');
 
   const cols = DATA.days.map((d, di) => {
-    const fore = [], back = [];
-    d.blocks.forEach((b, bi) => (BACKDROP.has(b.type) ? back : fore).push([b, bi]));
-    const ln = lanes(fore.map(([b]) => b));
+    const reg = d.blocks.find(b => QUIET.has(b.type));
+    const drawn = d.blocks.filter(b => !QUIET.has(b.type));
+    const solid = drawn.filter(b => !HAIRLINE.has(b.type) && b.type !== 'Break');
+    const ln = lanes(solid);
     const n = Math.max(1, Math.max(...ln, 0) + 1);
 
-    const seg = (b, bi, left, width, cls) => {
-      const top = (mins(b.start) - T0) * PX_PER_MIN;
-      const h = (mins(b.end) - mins(b.start)) * PX_PER_MIN;
+    const parts = [];
+    if (reg) {
+      parts.push(`<div class="rail" style="top:${y(mins(reg.start))}px;height:${
+        y(mins(reg.end)) - y(mins(reg.start))}px"
+        title="${esc(reg.item)} · ${reg.start}–${reg.end}"></div>`);
+    }
+    d.blocks.forEach((b, bi) => {
+      if (QUIET.has(b.type)) return;
+      const top = y(mins(b.start)), h = y(mins(b.end)) - top;
       const label = compact(b.item) || shorten(b.item);
-      const room = b.room ? ` · ${b.room}` : '';
-      return `<button class="seg${cls} t-${esc(b.type)}"
-        style="top:${top}px;height:${Math.max(h, 3)}px;left:${left}%;width:${width}%"
-        data-day="${di}" data-blk="${bi}"
-        title="${esc(b.item)} · ${b.start}–${b.end}${esc(room)}">
-        ${h >= MIN_LABEL_H ? `<span class="sl">${esc(label)}</span>` : ''}
-        ${h >= MIN_TIME_H ? `<span class="st">${b.start}–${b.end}</span>` : ''}</button>`;
-    };
+      const room = b.room ? ` · ${esc(b.room)}` : '';
+      const tip = `${esc(b.item)} · ${b.start}–${b.end}${room}`;
 
-    const segs = back.map(([b, bi]) => seg(b, bi, 0, 100, ' back')).join('')
-      + fore.map(([b, bi], i) => seg(b, bi, ln[i] * (100 / n), 100 / n, '')).join('');
+      // Lunch is typed Break in the source data, so it has to be picked out by
+      // name before the hairline rule — otherwise the whole midday vanishes.
+      if (!isMeal(b) && HAIRLINE.has(b.type)) {
+        parts.push(`<div class="brk" style="top:${top + h / 2}px" title="${tip}"></div>`);
+        return;
+      }
+      if (isMeal(b)) {
+        parts.push(`<button class="seg bare" style="top:${top}px;height:${h}px"
+          data-day="${di}" data-blk="${bi}" title="${tip}">
+          <span class="sl">${esc(label)} · ${b.start}–${b.end}</span></button>`);
+        return;
+      }
+      const i = solid.indexOf(b), w = 100 / n, left = (i < 0 ? 0 : ln[i]) * w;
+      const two = h >= TWO_LINE_H;
+      parts.push(`<button class="seg t-${esc(b.type)}"
+        style="top:${top}px;height:${Math.max(h, 4)}px;left:${left}%;width:${w}%"
+        data-day="${di}" data-blk="${bi}" title="${tip}">
+        ${h < MIN_LABEL_H ? '' : two
+          ? `<span class="sl">${esc(label)}</span><span class="st">${b.start}–${b.end}${
+              b.note ? ' · end time inferred' : room}</span>`
+          : `<span class="sl">${esc(label)} · ${b.start}–${b.end}</span>`}</button>`);
+    });
+
     const wd = new Date(d.date + 'T00:00').toLocaleDateString('en-GB',
       { weekday: 'short', day: 'numeric', month: 'short' });
     return `<div class="dcol">
-      <div class="dhead">${esc(wd)}</div>
-      <div class="dbody" style="height:${H}px">${grid}${segs}</div>
+      <div class="dhead">${esc(wd)}
+        <i>${reg ? `Registration ${reg.start}–${reg.end}` : '&nbsp;'}</i></div>
+      <div class="dbody" style="height:${H}px">${grid}${parts.join('')}</div>
     </div>`;
   }).join('');
 
-  const legend = ['Plenary', 'Parallel', 'Session', 'Poster', 'Ceremony', 'Social', 'Meeting', 'Break']
+  const legend = ['Plenary', 'Parallel', 'Session', 'Poster', 'Ceremony', 'Social', 'Meeting']
     .map(t => `<span><i class="sw t-${t}"></i>${t}</span>`).join('');
 
   const days = DATA.days.map((d, di) => {
@@ -134,8 +162,8 @@ function renderSchedule() {
 
   $('#v-schedule').innerHTML = `
     <h2 class="sec">Four days, at a glance</h2>
-    <p class="lede">Time runs down, days run across — 7:30 to 20:30.
-      Click a block to jump to its entry below.</p>
+    <p class="lede">Time runs down, days run across. Click a block to jump to its
+      entry below; breaks are the hairlines between them.</p>
     <div class="gridwrap">
       <div class="axis"><div class="dhead"></div>
         <div class="ticks" style="height:${H}px">${ticks}</div></div>

@@ -69,7 +69,8 @@ const settle = () => new Promise(r => setTimeout(r, 60));
   ok(!rendered.includes('undefined'), 'no undefined leaks into any rendered view');
 
   console.log('\n[schedule still works without talks]');
-  ok([...w.document.querySelectorAll('#v-schedule .seg')].length === 39,
-     '39 schedule blocks render from the inlined data alone');
+  const drawn = ['.seg', '.brk', '.rail']
+    .reduce((n, sel) => n + w.document.querySelectorAll('#v-schedule ' + sel).length, 0);
+  ok(drawn === 39, 'all 39 schedule entries render from the inlined data alone');
   console.log('\nall autoload tests passed');
 })().catch(e => { console.error(e.message); process.exit(1); });
