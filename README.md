@@ -130,6 +130,37 @@ Blocks taller than 38px carry a second line — room, or the note that Scientifi
 Program 5's end time is inferred. Below 820px the grid is hidden and the
 day-by-day tables carry the same information.
 
+## Phones
+
+Most viewing happens on a phone, so the layout adapts at two breakpoints.
+
+**Below 820px** the schedule shows one day at a time, picked with day buttons,
+instead of four columns fighting over the width. At 700px four columns leave
+each day too narrow to name a block; one day gets the full width and there are
+no lanes to share, so every block runs edge to edge.
+
+**Below 640px:**
+
+- **The tab bar.** Five tabs plus a search box and two buttons wrapped to four
+  rows — a sticky header taking a seventh of the screen. The tabs now sit in one
+  horizontally scrolling row with everything else beneath, so it is two rows.
+- **The speakers table.** Four columns left the affiliation column about 27px on
+  a 390px screen and pushed the whole page sideways; the longest affiliation is
+  887px unwrapped. Each speaker becomes a stacked card instead.
+- **Track and board headers.** A fixed first column squeezed titles into a few
+  characters; the code and title now stack.
+- **Tap targets.** Stars, disclosure buttons and day pills get a 44px minimum.
+
+Layout differences are done in CSS, so the desktop markup is unchanged. The two
+structural differences — table versus cards, four days versus one — cannot be,
+so `renderSpeakers` and `renderSchedule` ask `matchMedia` and branch. Crossing
+a breakpoint (rotating a phone) re-renders.
+
+`tests/test_mobile.js` covers both sides at 390px, 700px, 900px and 1280px: the
+phone gets cards and one day, the desktop keeps its four sortable columns and
+its four-column schedule. That second half matters more than the first — it is
+what stops a mobile fix from quietly degrading the desktop view.
+
 ## Layout on wide screens
 
 The container grows to about 1470px and then stops. Past that the extra room
@@ -178,6 +209,7 @@ node tests/test_sessions.js                       # track / speaker accordions
 node tests/test_autoload.js                       # fetching talks.json over http
 node tests/test_offline.js                        # saved-to-disk copy
 node tests/test_posters.js                        # poster tab
+node tests/test_mobile.js                         # phone layout, and that desktop is untouched
 ```
 
 ## Caveat worth knowing

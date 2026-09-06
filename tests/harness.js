@@ -29,10 +29,25 @@ function withTalks(value, posters) {
 }
 
 /** Boot the page. `talks` is null, an object, or undefined to keep the build's own. */
-function boot({ url = 'https://example.github.io/p/', talks, posters, fetchImpl } = {}) {
+function boot({ url = 'https://example.github.io/p/', talks, posters, fetchImpl,
+                width = 1280 } = {}) {
   const html = (talks === undefined && posters === undefined) ? HTML : withTalks(talks ?? null, posters);
   const dom = new JSDOM(html, { runScripts: 'outside-only', url });
   const w = dom.window;
+  // jsdom has no layout engine and no matchMedia. The site only asks one
+  // question of it — "is this a phone?" — so answer that from `width`.
+  const listeners = [];
+  w.matchMedia = q => ({
+    media: q,
+    matches: (() => {
+      const m = /max-width:\s*(\d+)px/.exec(q);
+      return m ? width <= +m[1] : width > 640;
+    })(),
+    addEventListener: (_, fn) => listeners.push(fn),
+    addListener: fn => listeners.push(fn),
+    removeEventListener: () => {},
+  });
+  w.__setWidth = px => { width = px; listeners.forEach(fn => fn({ matches: px <= 640 })); };
   w.fetch = fetchImpl || (async () => { throw new Error('no fetch stub installed'); });
   w.eval(html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>')));
   w.$ = s => w.document.querySelector(s);

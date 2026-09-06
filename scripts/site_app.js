@@ -3,6 +3,17 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// Structural changes — a table becoming a card list — cannot be done in CSS, so
+// the few views that need a different shape on a phone ask here. Everything else
+// is handled by media queries, and the desktop path is untouched.
+const NARROW = '(max-width: 640px)';
+// The schedule runs out of room before anything else does: four columns on a
+// 700px screen leave each day too narrow to name a block.
+const SCHED_NARROW = '(max-width: 820px)';
+const mq = q => !!(window.matchMedia && window.matchMedia(q).matches);
+const isNarrow = () => mq(NARROW);
+const oneDay = () => mq(SCHED_NARROW);
+
 const TRACK = Object.fromEntries(DATA.tracks.map(t => [t.code, t]));
 // Solved per hue at build time so all 26 clear 4.5:1 on white — see gen_data.py
 const hue = code => (TRACK[code] && TRACK[code].color) || 'var(--graphite)';
@@ -81,8 +92,12 @@ const HAIRLINE = new Set(['Break']);
 const isMeal = b => /^(Lunch|Breakfast|Dinner)\b/.test(b.item);
 const QUIET = new Set(['Admin']);
 
+let schedDay = 0;
+
 function renderSchedule() {
   const H = (T1 - T0) * PX_PER_MIN;
+  const solo = oneDay();
+  if (schedDay >= DATA.days.length) schedDay = 0;
   const y = m => (m - T0) * PX_PER_MIN;
 
   const hours = [];
@@ -91,7 +106,9 @@ function renderSchedule() {
   const ticks = hours.map(h =>
     `<div class="tick" style="top:${y(h * 60)}px">${h}:00</div>`).join('');
 
-  const cols = DATA.days.map((d, di) => {
+  const shown = solo ? [DATA.days[schedDay]] : DATA.days;
+  const cols = shown.map((d) => {
+    const di = DATA.days.indexOf(d);
     const reg = d.blocks.find(b => QUIET.has(b.type));
     const drawn = d.blocks.filter(b => !QUIET.has(b.type));
     const solid = drawn.filter(b => !HAIRLINE.has(b.type) && b.type !== 'Break');
@@ -135,7 +152,7 @@ function renderSchedule() {
     });
 
     const wd = new Date(d.date + 'T00:00').toLocaleDateString('en-GB',
-      { weekday: 'short', day: 'numeric', month: 'short' });
+      { weekday: solo ? 'long' : 'short', day: 'numeric', month: solo ? 'long' : 'short' });
     return `<div class="dcol">
       <div class="dhead">${esc(wd)}
         <i>${reg ? `Registration ${reg.start}–${reg.end}` : '&nbsp;'}</i></div>
@@ -143,10 +160,19 @@ function renderSchedule() {
     </div>`;
   }).join('');
 
+  // One day at a time on a narrow screen, picked with day buttons.
+  const pills = solo ? `<div class="daypick">${DATA.days.map((d, i) => {
+    const lbl = new Date(d.date + 'T00:00').toLocaleDateString('en-GB',
+      { weekday: 'short', day: 'numeric' });
+    return `<button data-day-pick="${i}" data-on="${i === schedDay ? 1 : 0}">${esc(lbl)}</button>`;
+  }).join('')}</div>` : '';
+
   const legend = ['Plenary', 'Parallel', 'Session', 'Poster', 'Ceremony', 'Social', 'Meeting']
     .map(t => `<span><i class="sw t-${t}"></i>${t}</span>`).join('');
 
-  const days = DATA.days.map((d, di) => {
+  const days = DATA.days.map((d, di) => renderDayTable(d, di)).join('');
+
+  function renderDayTable(d, di) {
     const rows = d.blocks.map((b, bi) => {
       const quiet = b.type === 'Break' || b.type === 'Admin';
       return `<div class="row${quiet ? ' quiet' : ''}" id="b${di}-${bi}">
@@ -158,13 +184,14 @@ function renderSchedule() {
     const wd = new Date(d.date + 'T00:00').toLocaleDateString('en-GB',
       { weekday: 'long', day: 'numeric', month: 'long' });
     return `<div class="day"><h3>${wd}</h3>${rows}</div>`;
-  }).join('');
+  }
 
   $('#v-schedule').innerHTML = `
     <h2 class="sec">Four days, at a glance</h2>
     <p class="lede">Time runs down, days run across. Click a block to jump to its
       entry below; breaks are the hairlines between them.</p>
-    <div class="gridwrap">
+    ${pills}
+    <div class="gridwrap${solo ? ' solo' : ''}">
       <div class="axis"><div class="dhead"></div>
         <div class="ticks" style="height:${H}px">${ticks}</div></div>
       ${cols}
@@ -173,8 +200,12 @@ function renderSchedule() {
     <div class="note">The nine <b>Scientific Program</b> blocks each run 26 tracks in
       parallel, but the organisers have not published which track sits in which block
       or room. Use Sessions to see who is speaking in each track.</div>
-    ${days}`;
+    ${solo ? renderDayTable(DATA.days[schedDay], schedDay) : days}`;
 
+  $$('#v-schedule [data-day-pick]').forEach(b => b.onclick = () => {
+    schedDay = +b.dataset.dayPick;
+    renderSchedule();
+  });
   $$('#v-schedule .seg').forEach(s => s.onclick = () => {
     $$('#v-schedule .seg').forEach(x => x.dataset.cur = '0');
     s.dataset.cur = '1';
@@ -328,17 +359,25 @@ function renderSpeakers() {
   const opts = (arr, sel) => arr.map(v =>
     `<option value="${esc(v)}"${v === sel ? ' selected' : ''}>${esc(v)}</option>`).join('');
 
-  $('#v-speakers').innerHTML = `
-    <h2 class="sec">Invited speakers <span class="count">${rows.length} of ${DATA.people.length}</span></h2>
-    <p class="lede">Everyone the organisers have announced. Sort by any column.</p>
-    <div class="filters">
+  const filters = `<div class="filters">
       <select class="f" id="fc"><option value="">Every country</option>${opts(countries, fCountry)}</select>
       <select class="f" id="fs"><option value="">Every track</option>${
         DATA.tracks.filter(t => t.n).map(t =>
           `<option value="${t.code}"${t.code === fSession ? ' selected' : ''}>${esc(t.code)} — ${esc(t.title.slice(0, 46))}</option>`).join('')
       }</select>
-    </div>
-    ${rows.length ? `<table class="people"><thead><tr>
+    </div>`;
+
+  // A four-column table leaves the affiliation about 27px on a 390px screen and
+  // pushes the page sideways. On a phone each speaker becomes a stacked card.
+  const body = rows.length
+    ? (isNarrow()
+      ? rows.map(p => `<div class="pcard">
+          <div class="pn">${hi(p.name)}</div>
+          <div class="pp">${p.sessions.map(c =>
+            `<span class="pill" style="--hue:${hue(c)}">${esc(c)}</span>`).join('')}</div>
+          <div class="pa">${hi(p.aff)}</div>
+        </div>`).join('')
+      : `<table class="people"><thead><tr>
         <th data-k="name"${sortKey === 'name' ? ` data-dir="${sortDir}"` : ''}>Name</th>
         <th data-k="aff"${sortKey === 'aff' ? ` data-dir="${sortDir}"` : ''}>Affiliation</th>
         <th data-k="country"${sortKey === 'country' ? ` data-dir="${sortDir}"` : ''}>Country</th>
@@ -349,8 +388,15 @@ function renderSpeakers() {
         <td>${esc(p.country)}</td>
         <td class="se">${p.sessions.map(c =>
           `<span class="pill" style="--hue:${hue(c)}">${esc(c)}</span>`).join('')}</td>
-      </tr>`).join('')}</tbody></table>`
-      : `<p class="empty">No speaker matches those filters. Clear the search or pick a wider country.</p>`}`;
+      </tr>`).join('')}</tbody></table>`)
+    : `<p class="empty">No speaker matches those filters. Clear the search or pick a wider country.</p>`;
+
+  $('#v-speakers').innerHTML = `
+    <h2 class="sec">Invited speakers <span class="count">${rows.length} of ${DATA.people.length}</span></h2>
+    <p class="lede">Everyone the organisers have announced.${
+      isNarrow() ? '' : ' Sort by any column.'}</p>
+    ${filters}
+    ${body}`;
 
   $('#fc').onchange = e => { fCountry = e.target.value; renderSpeakers(); };
   $('#fs').onchange = e => { fSession = e.target.value; renderSpeakers(); };
@@ -707,6 +753,14 @@ function init() {
   show('schedule');
   loadTalks();
   loadPosters();
+
+  // Rotating a phone crosses the breakpoint; re-render so the view matches.
+  if (window.matchMedia) {
+    const mq = window.matchMedia(NARROW);
+    const onChange = () => renderAll();
+    mq.addEventListener ? mq.addEventListener('change', onChange)
+                        : mq.addListener(onChange);
+  }
 }
 
 init();
