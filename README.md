@@ -85,6 +85,24 @@ Served over http the page also re-fetches `talks.json`, so a fresh scrape shows
 up without anyone rebuilding. If you build before scraping, the Talks tab offers
 a drop zone for the CSVs instead.
 
+## Posters
+
+Posters are not on the programme pages the scraper reads — the organisers
+publish board assignments as a PDF exported from Excel. Drop a newer copy at
+`data/IUPAC-PSK50_Poster_Sessions.pdf` and the workflow re-parses it; there is
+no separate command to remember.
+
+```bash
+sudo apt-get install poppler-utils      # provides pdftotext
+python scripts/parse_posters.py data/IUPAC-PSK50_Poster_Sessions.pdf
+```
+
+The PDF's columns shift by a few characters between pages, so the parser treats
+the header offset as a hint and snaps to the presenter's capitalised surname.
+Six of 1,135 rows still come out scrambled — `pdftotext` interleaves their
+wrapped cells — and those carry a `check` flag that the site shows as a
+"check PDF" badge rather than passing a mangled name off as clean data.
+
 ## Layout on wide screens
 
 The container grows to about 1470px and then stops. Past that the extra room
@@ -132,6 +150,7 @@ node -e "require('./tests/test_site.js')"         # site behaviour
 node tests/test_sessions.js                       # track / speaker accordions
 node tests/test_autoload.js                       # fetching talks.json over http
 node tests/test_offline.js                        # saved-to-disk copy
+node tests/test_posters.js                        # poster tab
 ```
 
 ## Caveat worth knowing

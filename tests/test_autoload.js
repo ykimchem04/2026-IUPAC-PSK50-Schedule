@@ -26,8 +26,13 @@ const settle = () => new Promise(r => setTimeout(r, 60));
   let fetched = [];
   let w = boot({
     url: 'https://someone.github.io/psk50/',
-    fetchImpl: async (u, o) => { fetched.push([u, o && o.cache]);
-      return { ok: true, status: 200, json: async () => JSON.parse(talksJson) }; },
+    // posters.json is fetched by the same startup path; this suite is about
+    // talks, so record only that request.
+    fetchImpl: async (u, o) => {
+      if (u !== 'talks.json') return { ok: false, status: 404, json: async () => ({}) };
+      fetched.push([u, o && o.cache]);
+      return { ok: true, status: 200, json: async () => JSON.parse(talksJson) };
+    },
   });
   await settle();
   ok(fetched.length === 1 && fetched[0][0] === 'talks.json', 'fetches talks.json relative to the page');
@@ -46,7 +51,7 @@ const settle = () => new Promise(r => setTimeout(r, 60));
   console.log('\n[opened from disk — file://]');
   fetched = [];
   w = boot({ url: 'file:///home/user/index.html',
-             fetchImpl: async () => { fetched.push('called'); throw new Error('no'); } });
+             fetchImpl: async (u) => { fetched.push(u); throw new Error('no'); } });
   await settle();
   ok(fetched.length === 0, 'no fetch attempted from file:// — no console error for the user');
   $$('.tab').find(t => t.dataset.v === 'talks').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));

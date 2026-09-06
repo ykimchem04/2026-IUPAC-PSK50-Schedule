@@ -9,21 +9,28 @@ const { JSDOM } = require('jsdom');
 
 const HTML = fs.readFileSync('docs/index.html', 'utf8');
 
-const TALKS_RE = /const TALKS = .*?;\nconst \$ =/s;
+const TALKS_RE = /const TALKS = .*?;\nconst POSTERS = /s;
+const POSTERS_RE = /const POSTERS = .*?;\nconst \$ =/s;
 
 /** Replace the build-time TALKS constant with `value` (an object, or null). */
-function withTalks(value) {
+function withTalks(value, posters) {
   // Test the pattern rather than comparing before/after: substituting the same
   // talks that are already embedded is a legitimate no-op, and comparing strings
   // would report that as a failure.
   if (!TALKS_RE.test(HTML)) throw new Error('harness: no TALKS constant in docs/index.html');
   const json = value === null ? 'null' : JSON.stringify(value);
-  return HTML.replace(TALKS_RE, () => `const TALKS = ${json};\nconst $ =`);
+  let out = HTML.replace(TALKS_RE, () => `const TALKS = ${json};\nconst POSTERS = `);
+  if (posters !== undefined) {
+    if (!POSTERS_RE.test(out)) throw new Error('harness: no POSTERS constant');
+    const pj = posters === null ? 'null' : JSON.stringify(posters);
+    out = out.replace(POSTERS_RE, () => `const POSTERS = ${pj};\nconst $ =`);
+  }
+  return out;
 }
 
 /** Boot the page. `talks` is null, an object, or undefined to keep the build's own. */
-function boot({ url = 'https://example.github.io/p/', talks, fetchImpl } = {}) {
-  const html = talks === undefined ? HTML : withTalks(talks);
+function boot({ url = 'https://example.github.io/p/', talks, posters, fetchImpl } = {}) {
+  const html = (talks === undefined && posters === undefined) ? HTML : withTalks(talks ?? null, posters);
   const dom = new JSDOM(html, { runScripts: 'outside-only', url });
   const w = dom.window;
   w.fetch = fetchImpl || (async () => { throw new Error('no fetch stub installed'); });

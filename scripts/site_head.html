@@ -307,6 +307,55 @@ mark{background:#F2E28A;color:inherit;padding:0 .05em}
   color:var(--graphite);margin-top:.14rem;
 }
 
+/* ---------- posters ---------- */
+.pboard{
+  display:grid;grid-template-columns:6.2rem 1fr;gap:0 1rem;
+  padding:.5rem 0;border-bottom:1px solid var(--rule-soft);align-items:baseline;
+}
+.pboard .bn{
+  font-size:.84rem;font-weight:700;position:relative;padding-left:.7rem;
+  white-space:nowrap;
+}
+.pboard .bn::before{
+  content:"";position:absolute;left:0;top:.15em;bottom:.15em;width:3px;
+  background:var(--hue);border-radius:2px;
+}
+.pboard .pt{font-family:var(--serif);font-size:1rem;line-height:1.4;max-width:var(--measure)}
+.pboard .pt i{
+  display:block;font-style:normal;font-family:var(--sans);font-size:.79rem;
+  color:var(--graphite);margin-top:.14rem;
+}
+.pboard .award{
+  display:inline-block;font-size:.68rem;font-weight:700;color:var(--flag);
+  border:1px solid var(--flag);border-radius:2px;padding:0 .28rem;
+  margin-left:.4rem;vertical-align:.08em;letter-spacing:.03em;
+}
+.pboard .flagged{
+  display:inline-block;font-size:.7rem;color:var(--graphite);
+  border:1px solid var(--rule);border-radius:2px;padding:0 .3rem;margin-left:.4rem;
+}
+.psess{
+  display:flex;flex-wrap:wrap;gap:.4rem;align-items:baseline;
+  margin:0 0 1.2rem;
+}
+.psess button{
+  font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;
+  background:none;border:1px solid var(--rule);border-radius:2px;
+  padding:.4rem .7rem;color:var(--graphite);
+}
+.psess button:hover{border-color:var(--ink);color:var(--ink)}
+.psess button[data-on="1"]{border-color:var(--flag);color:var(--flag)}
+.ptimes{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));
+  gap:.1rem 1.5rem;margin:0 0 1.5rem;max-width:52rem;
+}
+.ptimes div{
+  display:flex;justify-content:space-between;gap:1rem;
+  padding:.3rem 0;border-bottom:1px solid var(--rule-soft);font-size:.85rem;
+}
+.ptimes dt{font-weight:600}
+.ptimes dd{margin:0;color:var(--graphite);white-space:nowrap}
+
 /* ---------- footer ---------- */
 footer{
   border-top:1px solid var(--rule);margin-top:2rem;padding:1.1rem 0 2.5rem;
@@ -365,6 +414,7 @@ footer a{color:var(--graphite)}
   <button class="tab" role="tab" data-v="sessions" aria-selected="false">Sessions</button>
   <button class="tab" role="tab" data-v="speakers" aria-selected="false">Speakers</button>
   <button class="tab" role="tab" data-v="talks" aria-selected="false">Talks</button>
+  <button class="tab" role="tab" data-v="posters" aria-selected="false">Posters</button>
   <span class="spacer"></span>
   <input class="search" id="q" type="search" placeholder="Search names, topics, labs" aria-label="Search">
   <button class="planbtn" id="planToggle" data-on="0">My plan <span id="planN">0</span></button>
@@ -376,6 +426,7 @@ footer a{color:var(--graphite)}
   <section class="view" id="v-sessions" hidden></section>
   <section class="view" id="v-speakers" hidden></section>
   <section class="view" id="v-talks" hidden></section>
+  <section class="view" id="v-posters" hidden></section>
 </main>
 
 <footer><div class="wrap">

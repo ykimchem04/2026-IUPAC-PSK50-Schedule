@@ -41,9 +41,17 @@ if talks_path.exists() and not args.no_embed:
     if "</script" in talks.lower():
         sys.exit("talks.json contains a closing script tag — refusing to inline it")
 
+posters_path = root / "docs/posters.json"
+posters = "null"
+if posters_path.exists() and not args.no_embed:
+    posters = posters_path.read_text(encoding="utf-8")
+    if "</script" in posters.lower():
+        sys.exit("posters.json contains a closing script tag — refusing to inline it")
+
 out = root / "docs/index.html"
 out.write_text(
-    head + "\n<script>\nconst DATA = " + data + ";\nconst TALKS = " + talks + ";\n"
+    head + "\n<script>\nconst DATA = " + data + ";\nconst TALKS = " + talks
+    + ";\nconst POSTERS = " + posters + ";\n"
     + app + "\n</script>\n</body>\n</html>\n",
     encoding="utf-8")
 kb = out.stat().st_size / 1024
@@ -51,10 +59,16 @@ n = 0
 if talks != "null":
     import json
     n = len(json.loads(talks).get("talks", []))
+np = 0
+if posters != "null":
+    import json as _j
+    np = len(_j.loads(posters).get("posters", []))
 if n:
     note = f", {n} talks embedded"
 elif args.no_embed:
     note = ", talks left in talks.json (--no-embed)"
 else:
     note = ", no talks embedded yet"
+if np:
+    note += f", {np} posters"
 print(f"built {out.relative_to(root)}, {kb:,.0f} KB{note}")

@@ -467,6 +467,98 @@ function wireDrop() {
   drop.addEventListener('drop', e => read(e.dataTransfer.files));
 }
 
+/* ---------------------------------------------------------------- posters */
+// From the organisers' poster-assignment PDF, not the programme pages — the
+// scraper skips posters, so this is a separate source with its own file.
+let posters = null, posterMeta = {}, pSession = null;
+
+// From Poster Presentation Guidelines v2.
+const POSTER_TIMES = [
+  ['Mounting', '08:00–08:30'],
+  ['Presentation (stay at your board)', '08:30–09:30'],
+  ['On display', '08:30–17:00'],
+  ['Removal', '17:00–18:00'],
+];
+
+function renderPosters() {
+  const el = $('#v-posters');
+  if (!posters) {
+    el.innerHTML = `<h2 class="sec">Posters</h2>
+      <p class="lede">Poster boards come from the organisers' assignment PDF.
+        Run <code>scripts/parse_posters.py</code> and the list appears here.</p>`;
+    return;
+  }
+
+  const sessions = [...new Set(posters.map(p => p.session))].sort();
+  if (!pSession) pSession = sessions[0];
+
+  const rows = posters.filter(p =>
+    p.session === pSession &&
+    (!planOnly || plan.has(p.track)) &&
+    (!query || [p.board, p.title, p.presenter, p.affiliation, p.abstract_no, p.track]
+      .join(' ').toLowerCase().includes(query.toLowerCase())));
+
+  const byTrack = {};
+  rows.forEach(p => (byTrack[p.track || '—'] ||= []).push(p));
+  const order = [...DATA.tracks.map(t => t.code), '—'].filter(c => byTrack[c]);
+
+  const groups = order.map(c => {
+    const t = TRACK[c];
+    const list = byTrack[c].slice().sort((a, b) => a.seq - b.seq);
+    return `<div class="day"><h3>${esc(c)}${t ? ' — ' + esc(t.title) : ''}
+      <span class="count">${list.length}</span></h3>
+      ${list.map(p => `<div class="pboard" style="--hue:${hue(c)}">
+        <div class="bn">${hi(p.board)}</div>
+        <div class="pt">${hi(p.title)}
+          ${p.award ? '<span class="award">AWARD</span>' : ''}
+          ${p.check ? '<span class="flagged" title="This row did not parse cleanly from the PDF">check PDF</span>' : ''}
+          <i>${hi(p.presenter || '—')}${p.affiliation ? ' · ' + hi(p.affiliation) : ''}
+             ${p.abstract_no ? ' · ' + esc(p.abstract_no) : ''}</i>
+        </div></div>`).join('')}</div>`;
+  }).join('');
+
+  const tabs = sessions.map(s =>
+    `<button data-ps="${esc(s)}" data-on="${s === pSession ? 1 : 0}">${esc(s)} — ${
+      esc((posterMeta[s] || '').split(',')[0])}</button>`).join('');
+  const awards = posters.filter(p => p.session === pSession && p.award).length;
+
+  el.innerHTML = `
+    <h2 class="sec">Posters <span class="count">${rows.length} of ${
+      posters.filter(p => p.session === pSession).length} on this day</span></h2>
+    <p class="lede">${esc(posterMeta[pSession] || '')}${
+      awards ? ` · ${awards} boards are Student Presentation Award applicants` : ''}</p>
+    <div class="psess">${tabs}</div>
+    <div class="ptimes">${POSTER_TIMES.map(([k, v]) =>
+      `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</div>
+    ${groups || `<p class="empty">Nothing matches “${esc(query)}” in ${esc(pSession)}.</p>`}`;
+
+  $$('#v-posters [data-ps]').forEach(b => b.onclick = () => {
+    pSession = b.dataset.ps; renderPosters();
+  });
+}
+
+async function loadPosters() {
+  if (!/^https?:$/.test(location.protocol)) {
+    if (typeof POSTERS !== 'undefined' && POSTERS) applyPosters(POSTERS);
+    return;
+  }
+  if (typeof POSTERS !== 'undefined' && POSTERS) applyPosters(POSTERS);
+  try {
+    const res = await fetch('posters.json', { cache: 'no-cache' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    applyPosters(await res.json());
+  } catch (e) {
+    console.warn('posters.json not fetched:', e.message);
+  }
+  if (view === 'posters') renderPosters();
+}
+
+function applyPosters(body) {
+  if (!body || !Array.isArray(body.posters) || !body.posters.length) return;
+  posters = body.posters;
+  posterMeta = body.sessions || {};
+}
+
 /* ---------------------------------------------------------------- plan */
 function bindStars() {
   $$('[data-star]').forEach(b => b.onclick = ev => {
@@ -503,8 +595,8 @@ let view = 'schedule';
 let loadState = 'idle';   // idle | loading | ok | none
 
 function renderAll() {
-  ({ schedule: renderSchedule, sessions: renderSessions,
-     speakers: renderSpeakers, talks: renderTalks }[view])();
+  ({ schedule: renderSchedule, sessions: renderSessions, speakers: renderSpeakers,
+     talks: renderTalks, posters: renderPosters }[view])();
 }
 
 function show(v) {
@@ -573,6 +665,7 @@ function init() {
   $('#planSave').onclick = savePlan;
   show('schedule');
   loadTalks();
+  loadPosters();
 }
 
 init();

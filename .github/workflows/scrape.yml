@@ -44,7 +44,8 @@ jobs:
       - name: Unit tests
         env:
           PYTHONPATH: scripts
-        run: python tests/test_scrape.py
+        run: |
+          python tests/test_scrape.py
 
       # Abstracts already committed under out/ are reused, so a rerun only
       # fetches talks added since last time.
@@ -92,6 +93,14 @@ jobs:
             --presentations out/psk50_presentations.csv \
             --abstracts out/psk50_abstracts.csv \
             --out docs/talks.json
+          # Posters come from the organisers' PDF, not the programme pages.
+          # Re-parsed each run so a replacement PDF committed to data/ takes
+          # effect without anyone remembering a second command.
+          if [ -f data/IUPAC-PSK50_Poster_Sessions.pdf ]; then
+            sudo apt-get install -y -qq poppler-utils
+            python scripts/parse_posters.py data/IUPAC-PSK50_Poster_Sessions.pdf \
+              --out docs/posters.json
+          fi
           python scripts/build_site.py
 
       - name: Spreadsheet
