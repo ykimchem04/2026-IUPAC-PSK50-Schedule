@@ -30,7 +30,7 @@ function withTalks(value, posters) {
 
 /** Boot the page. `talks` is null, an object, or undefined to keep the build's own. */
 function boot({ url = 'https://example.github.io/p/', talks, posters, fetchImpl,
-                width = 1280 } = {}) {
+                width = 1280, storage, storageThrows } = {}) {
   const html = (talks === undefined && posters === undefined) ? HTML : withTalks(talks ?? null, posters);
   const dom = new JSDOM(html, { runScripts: 'outside-only', url });
   const w = dom.window;
@@ -48,6 +48,17 @@ function boot({ url = 'https://example.github.io/p/', talks, posters, fetchImpl,
     removeEventListener: () => {},
   });
   w.__setWidth = px => { width = px; listeners.forEach(fn => fn({ matches: px <= 640 })); };
+
+  // Seed a previous visit's storage, or simulate a browser that refuses it
+  // (private mode, and file:// in some browsers).
+  if (storageThrows) {
+    Object.defineProperty(w, 'localStorage', {
+      configurable: true,
+      get() { throw new Error('storage is not available'); },
+    });
+  } else if (storage) {
+    for (const [k, v] of Object.entries(storage)) w.localStorage.setItem(k, v);
+  }
   w.fetch = fetchImpl || (async () => { throw new Error('no fetch stub installed'); });
   w.eval(html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>')));
   w.$ = s => w.document.querySelector(s);

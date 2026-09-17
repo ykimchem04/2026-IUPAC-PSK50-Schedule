@@ -18,9 +18,32 @@ const TRACK = Object.fromEntries(DATA.tracks.map(t => [t.code, t]));
 // Solved per hue at build time so all 26 clear 4.5:1 on white — see gen_data.py
 const hue = code => (TRACK[code] && TRACK[code].color) || 'var(--graphite)';
 
-// Sessions the user has starred. In-memory by design: this file is meant to be
-// opened from disk, copied and shared, so it never writes to the browser.
+// Sessions the user has starred, kept in this browser between visits.
+// localStorage is per-origin and never travels inside the file, so a copy of
+// this page handed to someone else still opens with an empty plan.
+const PLAN_KEY = 'psk50.plan.v1';
 const plan = new Set();
+
+function loadPlan() {
+  try {
+    const raw = localStorage.getItem(PLAN_KEY);
+    if (!raw) return;
+    // Drop codes that no longer exist rather than carrying a stale track around.
+    JSON.parse(raw).forEach(c => TRACK[c] && plan.add(c));
+  } catch (e) {
+    // Private browsing, a blocked origin, or file:// in some browsers. The plan
+    // simply does not persist there; nothing else should break.
+    console.warn('plan not restored:', e.message);
+  }
+}
+
+function persistPlan() {
+  try {
+    localStorage.setItem(PLAN_KEY, JSON.stringify([...plan]));
+  } catch (e) {
+    console.warn('plan not saved:', e.message);
+  }
+}
 let planOnly = false;
 let query = '';
 
@@ -654,9 +677,30 @@ function bindStars() {
     const c = b.dataset.star;
     plan.has(c) ? plan.delete(c) : plan.add(c);
     b.dataset.on = plan.has(c) ? 1 : 0;
-    $('#planN').textContent = plan.size;
+    persistPlan();
+    syncPlanUI();
     if (planOnly) renderAll();
   });
+}
+
+function syncPlanUI() {
+  $('#planN').textContent = plan.size;
+  $('#planClear').hidden = plan.size === 0;
+  if (!plan.size && planOnly) {
+    planOnly = false;
+    $('#planToggle').dataset.on = 0;
+  }
+  $('#planToggle').disabled = plan.size === 0;
+}
+
+function clearPlan() {
+  if (!plan.size) return;
+  plan.clear();
+  persistPlan();
+  planOnly = false;
+  $('#planToggle').dataset.on = 0;
+  syncPlanUI();
+  renderAll();
 }
 
 function savePlan() {
@@ -750,6 +794,9 @@ function init() {
     renderAll();
   };
   $('#planSave').onclick = savePlan;
+  $('#planClear').onclick = clearPlan;
+  loadPlan();
+  syncPlanUI();
   show('schedule');
   loadTalks();
   loadPosters();

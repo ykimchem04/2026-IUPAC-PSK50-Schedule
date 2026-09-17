@@ -103,6 +103,28 @@ Six of 1,135 rows still come out scrambled — `pdftotext` interleaves their
 wrapped cells — and those carry a `check` flag that the site shows as a
 "check PDF" badge rather than passing a mangled name off as clean data.
 
+## Type
+
+Two sans faces, told apart by role rather than by serif/sans. Archivo, a
+grotesque, does the interface work — tabs, times, labels, counts. Source Sans, a
+humanist face, carries the reading text — talk titles, presenter names,
+abstracts — where it stays comfortable at paragraph length. Both fall back to
+the system UI stack if the webfonts do not load.
+
+## The starred plan
+
+Starring tracks writes to `localStorage` under `psk50.plan.v1`, so the plan
+survives a reload. It is per-origin and never inside the file, so a copy of the
+page handed to someone else opens empty — which is the behaviour you want, and
+the reason it is stored there rather than baked into the build.
+
+Storage can be refused (private browsing, `file://` in some browsers). Every
+read and write is wrapped, and a refusal only means the plan does not persist;
+starring, filtering and export still work. Track codes that no longer exist are
+dropped on load rather than carried forward. **Export** still downloads the
+plan with its speaker rosters as JSON, and **Clear** appears once anything is
+starred.
+
 ## Colour and the schedule grid
 
 White ground, pastel blocks. Colour is load-bearing — block type on the
@@ -210,6 +232,7 @@ node tests/test_autoload.js                       # fetching talks.json over htt
 node tests/test_offline.js                        # saved-to-disk copy
 node tests/test_posters.js                        # poster tab
 node tests/test_mobile.js                         # phone layout, and that desktop is untouched
+node tests/test_plan.js                           # starred plan: persistence, sharing, clearing
 ```
 
 ## Caveat worth knowing
