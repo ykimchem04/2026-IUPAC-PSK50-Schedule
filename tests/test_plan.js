@@ -22,15 +22,15 @@ const open = url => boot({ url, talks: FIXTURE, posters: null, fetchImpl: noFetc
   ok(w.$('#planN').textContent === '2', 'two tracks starred');
   ok(!w.$('#planClear').hidden, 'Clear appears');
   ok(!w.$('#planToggle').disabled, 'My plan becomes usable');
-  const stored = w.localStorage.getItem('psk50.plan.v1');
-  ok(stored && JSON.parse(stored).sort().join() === 'S1,S10',
+  const stored = w.localStorage.getItem('psk50.plan.v2');
+  ok(stored && JSON.parse(stored).tracks.sort().join() === 'S1,S10',
      `written to storage as ${stored}`);
 
   console.log('\n[reload]');
   // Each jsdom window gets its own store, so a reload is modelled by seeding the
   // next window with exactly what the last one wrote.
   const reloaded = boot({ url: ORIGIN, talks: FIXTURE, posters: null, fetchImpl: noFetch,
-                          storage: { 'psk50.plan.v1': stored } });
+                          storage: { 'psk50.plan.v2': stored } });
   await settle();
   ok(reloaded.$('#planN').textContent === '2', 'plan restored on the next visit');
   reloaded.tab('sessions');
@@ -44,25 +44,26 @@ const open = url => boot({ url, talks: FIXTURE, posters: null, fetchImpl: noFetc
   await settle();
   ok(theirs.$('#planN').textContent === '0',
      'a different origin has its own storage — the plan does not travel in the file');
-  ok(!fs.readFileSync('docs/index.html', 'utf8').includes('psk50.plan.v1":['),
+  ok(!fs.readFileSync('docs/index.html', 'utf8').includes('"tracks":["S1"'),
      'and nothing is baked into the published page');
 
   console.log('\n[clearing]');
   const c = boot({ url: ORIGIN, talks: FIXTURE, posters: null, fetchImpl: noFetch,
-                   storage: { 'psk50.plan.v1': stored } });
+                   storage: { 'psk50.plan.v2': stored } });
   await settle();
   c.click(c.$('#planToggle'));
   c.click(c.$('#planClear'));
   ok(c.$('#planN').textContent === '0', 'counter resets');
   ok(c.$('#planClear').hidden, 'Clear hides itself again');
   ok(c.$('#planToggle').dataset.on === '0', 'the filter switches off with it');
-  ok(JSON.parse(c.localStorage.getItem('psk50.plan.v1')).length === 0, 'storage emptied');
+  const cleared = JSON.parse(c.localStorage.getItem('psk50.plan.v2'));
+  ok(cleared.tracks.length === 0 && cleared.talks.length === 0, 'storage emptied');
   c.tab('speakers');
   ok(c.$$('#v-speakers tbody tr').length === 278, 'all speakers visible again');
 
   console.log('\n[a stale track code is dropped, not carried]');
   const stale = boot({ url: ORIGIN, talks: FIXTURE, posters: null, fetchImpl: noFetch,
-                       storage: { 'psk50.plan.v1': '["S1","S99","NOPE"]' } });
+                       storage: { 'psk50.plan.v2': '{"tracks":["S1","S99","NOPE"],"talks":[]}' } });
   await settle();
   ok(stale.$('#planN').textContent === '1', 'only the code that still exists is restored');
 

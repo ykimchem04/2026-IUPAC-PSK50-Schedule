@@ -111,19 +111,34 @@ humanist face, carries the reading text — talk titles, presenter names,
 abstracts — where it stays comfortable at paragraph length. Both fall back to
 the system UI stack if the webfonts do not load.
 
-## The starred plan
+## The plan
 
-Starring tracks writes to `localStorage` under `psk50.plan.v1`, so the plan
-survives a reload. It is per-origin and never inside the file, so a copy of the
-page handed to someone else opens empty — which is the behaviour you want, and
-the reason it is stored there rather than baked into the build.
+Two kinds of interest, kept separate:
+
+- **Starring a track** means "show me this room" — it filters Sessions,
+  Speakers and Posters down to that track and keeps all of its talks.
+- **Picking a talk** means "I intend to be here at 11:15". With 26 parallel
+  tracks this is what an agenda is actually made of, so every talk row carries
+  its own star.
+
+Picking a talk pulls its track into the filtered view without starring the whole
+thing, so **My plan** then shows just that talk rather than its forty siblings.
+
+**Clashes are flagged.** Two picks overlapping in time in different rooms cannot
+both happen; both sides get marked, the count appears in the header, and the
+Talks tab says so in plain words. This is the point of picking talks instead of
+tracks — the conflict is invisible at track level.
+
+Both live in `localStorage` under `psk50.plan.v2` as `{tracks, talks}`. A plan
+saved before talks could be picked was a bare array under `psk50.plan.v1`; that
+is still read. Storage is per-origin and never inside the file, so a copy of the
+page handed to someone else opens empty.
 
 Storage can be refused (private browsing, `file://` in some browsers). Every
-read and write is wrapped, and a refusal only means the plan does not persist;
-starring, filtering and export still work. Track codes that no longer exist are
-dropped on load rather than carried forward. **Export** still downloads the
-plan with its speaker rosters as JSON, and **Clear** appears once anything is
-starred.
+read and write is wrapped, and a refusal only means the plan does not persist.
+Track codes that no longer exist are dropped on load. **Export** downloads the
+picked talks with their times, rooms, chairs and clash marks, plus any starred
+tracks with their rosters. **Clear** empties both.
 
 ## Colour and the schedule grid
 
@@ -233,6 +248,7 @@ node tests/test_offline.js                        # saved-to-disk copy
 node tests/test_posters.js                        # poster tab
 node tests/test_mobile.js                         # phone layout, and that desktop is untouched
 node tests/test_plan.js                           # starred plan: persistence, sharing, clearing
+node tests/test_picks.js                          # picking individual talks, and clash detection
 ```
 
 ## Caveat worth knowing

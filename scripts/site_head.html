@@ -79,7 +79,20 @@ nav.tabs{
 .planbtn[data-on="1"]{border-color:var(--flag);color:var(--flag)}
 .planbtn:disabled{opacity:.45;cursor:default}
 .planbtn:disabled:hover{border-color:var(--rule);color:var(--graphite)}
-#planClear[hidden]{display:none}
+#planClear[hidden],#planClash[hidden]{display:none}
+.clashchip{
+  font-size:.74rem;font-weight:700;color:var(--flag);
+  border:1px solid var(--flag);border-radius:2px;padding:.15rem .4rem;
+  white-space:nowrap;align-self:center;
+}
+.note.clash{border-left-color:var(--flag);color:var(--ink)}
+
+/* the pick star sits at the end of a talk row */
+.who > summary,.who.flat{grid-template-columns:5rem 1fr auto}
+.star.pick{font-size:1rem;line-height:1.3}
+.star.pick[data-clash="1"]{color:var(--flag);opacity:.55}
+.star.pick[data-on="1"][data-clash="1"]{opacity:1}
+.talk .c{display:flex;align-items:baseline;gap:.15rem}
 
 :focus-visible{outline:2px solid var(--flag);outline-offset:2px}
 
@@ -517,6 +530,7 @@ footer a{color:var(--graphite)}
   <input class="search" id="q" type="search" placeholder="Search names, topics, labs" aria-label="Search">
   <button class="planbtn" id="planToggle" data-on="0">My plan <span id="planN">0</span></button>
   <button class="planbtn" id="planSave">Export</button>
+  <span class="clashchip" id="planClash" hidden></span>
   <button class="planbtn" id="planClear" hidden>Clear</button>
 </div></nav>
 

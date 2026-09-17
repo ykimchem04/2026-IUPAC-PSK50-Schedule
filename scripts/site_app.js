@@ -21,15 +21,27 @@ const hue = code => (TRACK[code] && TRACK[code].color) || 'var(--graphite)';
 // Sessions the user has starred, kept in this browser between visits.
 // localStorage is per-origin and never travels inside the file, so a copy of
 // this page handed to someone else still opens with an empty plan.
-const PLAN_KEY = 'psk50.plan.v1';
-const plan = new Set();
+const PLAN_KEY = 'psk50.plan.v2';
+const PLAN_KEY_V1 = 'psk50.plan.v1';
+// Two kinds of interest. A starred track is "show me this room"; a picked talk
+// is "I intend to be here at 11:15". With 26 parallel tracks the second is what
+// an agenda is actually made of, so picks drive the clash check below.
+const plan = new Set();    // track codes
+const picks = new Set();   // talk pids
 
 function loadPlan() {
   try {
     const raw = localStorage.getItem(PLAN_KEY);
-    if (!raw) return;
-    // Drop codes that no longer exist rather than carrying a stale track around.
-    JSON.parse(raw).forEach(c => TRACK[c] && plan.add(c));
+    if (raw) {
+      const v = JSON.parse(raw);
+      // Drop codes that no longer exist rather than carrying a stale track.
+      (v.tracks || []).forEach(c => TRACK[c] && plan.add(c));
+      (v.talks || []).forEach(p => picks.add(String(p)));
+      return;
+    }
+    // A plan saved before talks could be picked was a bare array of codes.
+    const old = localStorage.getItem(PLAN_KEY_V1);
+    if (old) JSON.parse(old).forEach(c => TRACK[c] && plan.add(c));
   } catch (e) {
     // Private browsing, a blocked origin, or file:// in some browsers. The plan
     // simply does not persist there; nothing else should break.
@@ -39,10 +51,32 @@ function loadPlan() {
 
 function persistPlan() {
   try {
-    localStorage.setItem(PLAN_KEY, JSON.stringify([...plan]));
+    localStorage.setItem(PLAN_KEY,
+      JSON.stringify({ tracks: [...plan], talks: [...picks] }));
   } catch (e) {
     console.warn('plan not saved:', e.message);
   }
+}
+
+const planSize = () => plan.size + picks.size;
+const pickedTalks = () => (talks || []).filter(t => picks.has(String(t.pid))).sort(byTime);
+
+// Two picks in different rooms at the same time cannot both happen. Flag them
+// rather than letting someone find out on the day.
+function clashes() {
+  const list = pickedTalks().filter(t => t.date && t.start && t.end);
+  const bad = new Set();
+  for (let i = 0; i < list.length; i++) {
+    for (let j = i + 1; j < list.length; j++) {
+      const a = list[i], b = list[j];
+      if (a.date !== b.date) continue;
+      if (mins(a.start) < mins(b.end) && mins(b.start) < mins(a.end)) {
+        bad.add(String(a.pid));
+        bad.add(String(b.pid));
+      }
+    }
+  }
+  return bad;
 }
 let planOnly = false;
 let query = '';
@@ -65,8 +99,10 @@ const matches = p =>
    ...p.sessions.map(c => TRACK[c] ? TRACK[c].title : '')]
     .join(' ').toLowerCase().includes(query.toLowerCase());
 
+const inPlan = code =>
+  plan.has(code) || (talks || []).some(t => t.session === code && picks.has(String(t.pid)));
 const visibleTracks = () =>
-  DATA.tracks.filter(t => !planOnly || plan.has(t.code));
+  DATA.tracks.filter(t => !planOnly || inPlan(t.code));
 
 const peopleOf = code => DATA.people.filter(p => p.sessions.includes(code));
 
@@ -266,14 +302,24 @@ function metaRail(t, extra = []) {
   return `<aside class="w-meta"><dl>${dl}</dl>${link}</aside>`;
 }
 
-function talkRow(t) {
+function pickBtn(t, clash) {
+  const on = picks.has(String(t.pid));
+  return `<button class="star pick" data-pick="${esc(t.pid)}" data-on="${on ? 1 : 0}"
+    ${clash ? 'data-clash="1"' : ''}
+    aria-label="${on ? 'Remove from' : 'Add to'} my plan"
+    title="${clash ? 'Clashes with another talk in your plan' : 'Add to my plan'}">★</button>`;
+}
+
+function talkRow(t, clash) {
   const when = t.start ? `${t.start}–${t.end || ''}`.replace(/–$/, '') : '—';
   const sub = [t.affiliation, t.type].filter(Boolean).map(esc).join(' · ');
   const head = `<span class="w-t">${esc(when)}</span>
     <span class="w-n"><b>${hi(t.presenter || 'Speaker not announced')}</b><i>${sub}</i></span>`;
-  if (!(t.title || t.abstract)) return `<div class="who flat">${head}</div>`;
+  if (!(t.title || t.abstract)) {
+    return `<div class="who flat">${head}${pickBtn(t, clash)}</div>`;
+  }
   return `<details class="who" data-talk="${esc(t.pid)}"${openTalks.has(t.pid) ? ' open' : ''}>
-    <summary>${head}</summary>
+    <summary>${head}${pickBtn(t, clash)}</summary>
     <div class="w-body">
       <div class="w-main">
         ${t.title ? `<h4>${hi(t.title)}</h4>` : ''}
@@ -285,10 +331,12 @@ function talkRow(t) {
   </details>`;
 }
 
-function trackBody(t) {
-  const ts = talksOf(t.code).filter(k => !query ||
-    [k.title, k.presenter, k.affiliation, k.chair, k.abstract].join(' ')
-      .toLowerCase().includes(query.toLowerCase()));
+function trackBody(t, clash) {
+  const ts = talksOf(t.code)
+    .filter(k => !planOnly || plan.has(t.code) || picks.has(String(k.pid)))
+    .filter(k => !query ||
+      [k.title, k.presenter, k.affiliation, k.chair, k.abstract].join(' ')
+        .toLowerCase().includes(query.toLowerCase()));
 
   if (ts.length) {
     let lastChair = null, lastDay = null, out = '';
@@ -301,7 +349,7 @@ function trackBody(t) {
         lastChair = k.chair;
         out += `<div class="chairbar">Chair: ${hi(k.chair)}</div>`;
       }
-      out += talkRow(k);
+      out += talkRow(k, clash.has(String(k.pid)));
     }
     return out;
   }
@@ -318,6 +366,7 @@ function trackBody(t) {
 }
 
 function renderSessions() {
+  const clash = clashes();
   const list = visibleTracks().map(t => {
     const ts = talksOf(t.code);
     const hit = !query
@@ -337,7 +386,7 @@ function renderSessions() {
           <button class="star" data-star="${esc(t.code)}" data-on="${plan.has(t.code) ? 1 : 0}"
             aria-label="Add ${esc(t.code)} to my plan">★</button></span>
       </summary>
-      <div class="trk-body">${trackBody(t)}</div>
+      <div class="trk-body">${trackBody(t, clash)}</div>
     </details>`;
   }).join('');
 
@@ -357,6 +406,7 @@ function renderSessions() {
     d.open ? openTalks.add(d.dataset.talk) : openTalks.delete(d.dataset.talk);
   }));
   bindStars();
+  bindPicks();
 }
 
 /* ---------------------------------------------------------------- speakers */
@@ -482,8 +532,9 @@ function renderTalks() {
     return;
   }
 
+  const clash = clashes();
   const rows = talks.filter(t =>
-    (!planOnly || plan.has(t.session)) &&
+    (!planOnly || plan.has(t.session) || picks.has(String(t.pid))) &&
     (!query || [t.title, t.presenter, t.affiliation, t.chair, t.session, t.abstract]
       .join(' ').toLowerCase().includes(query.toLowerCase())));
 
@@ -519,7 +570,7 @@ function renderTalks() {
       const when = t.start ? `${t.start}–${t.end}` : '—';
       const extra = talkGroup === 'session' ? [['Room', t.room], ['Chair', t.chair]] : [];
       return chairRow + `<div class="talk" style="--hue:${hue(t.session)}">
-        <div class="c">${esc(when)}</div>
+        <div class="c">${esc(when)}${pickBtn(t, clash.has(String(t.pid)))}</div>
         <div class="ti">
           <div class="t-head">${hi(t.title)}
             <i>${hi(t.presenter || '')}${t.affiliation ? ' · ' + hi(t.affiliation) : ''}
@@ -535,8 +586,11 @@ function renderTalks() {
 
   const withAbs = talks.filter(t => t.abstract).length;
   const chairs = new Set(talks.map(t => t.chair).filter(Boolean)).size;
+  const nClash = clash.size;
   el.innerHTML = `
     <h2 class="sec">Talks <span class="count">${rows.length} of ${talks.length}</span></h2>
+    ${nClash ? `<div class="note clash">${nClash} talks in your plan overlap in time.
+      They are marked below — you cannot be in two rooms at once.</div>` : ''}
     <p class="lede">Podium talks from your scraper output — ${chairs} chairs,
       ${withAbs} abstracts loaded.</p>
     <div class="filters">
@@ -547,6 +601,7 @@ function renderTalks() {
 
   $('#gday').onclick = () => { talkGroup = 'day'; renderTalks(); };
   $('#gses').onclick = () => { talkGroup = 'session'; renderTalks(); };
+  bindPicks();
 }
 
 function ingest(text) {
@@ -683,19 +738,36 @@ function bindStars() {
   });
 }
 
+function bindPicks() {
+  $$('[data-pick]').forEach(b => b.onclick = ev => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const id = b.dataset.pick;
+    picks.has(id) ? picks.delete(id) : picks.add(id);
+    persistPlan();
+    syncPlanUI();
+    renderAll();          // a pick can create or clear a clash elsewhere
+  });
+}
+
 function syncPlanUI() {
-  $('#planN').textContent = plan.size;
-  $('#planClear').hidden = plan.size === 0;
-  if (!plan.size && planOnly) {
+  const n = planSize();
+  const c = clashes().size;
+  $('#planN').textContent = n;
+  $('#planClash').hidden = c === 0;
+  $('#planClash').textContent = `${c / 2 | 0} clash${c > 2 ? 'es' : ''}`;
+  $('#planClear').hidden = n === 0;
+  if (!n && planOnly) {
     planOnly = false;
     $('#planToggle').dataset.on = 0;
   }
-  $('#planToggle').disabled = plan.size === 0;
+  $('#planToggle').disabled = n === 0;
 }
 
 function clearPlan() {
-  if (!plan.size) return;
+  if (!planSize()) return;
   plan.clear();
+  picks.clear();
   persistPlan();
   planOnly = false;
   $('#planToggle').dataset.on = 0;
@@ -704,12 +776,19 @@ function clearPlan() {
 }
 
 function savePlan() {
-  if (!plan.size) return alert('Star a track or two first — the Sessions tab has all 26.');
-  const picked = DATA.tracks.filter(t => plan.has(t.code));
+  if (!planSize()) return alert('Pick a talk or star a track first.');
+  const clash = clashes();
   const body = {
     conference: DATA.meta.name, dates: DATA.meta.dates,
     saved: new Date().toISOString().slice(0, 10),
-    tracks: picked.map(t => ({
+    talks: pickedTalks().map(t => ({
+      date: t.date, start: t.start, end: t.end, room: t.room, chair: t.chair,
+      session: t.session, type: t.type, title: t.title,
+      presenter: t.presenter, affiliation: t.affiliation,
+      abstract_no: t.abstract_no, url: t.url,
+      clashes: clash.has(String(t.pid)) || undefined,
+    })),
+    tracks: DATA.tracks.filter(t => plan.has(t.code)).map(t => ({
       code: t.code, title: t.title, url: t.url,
       speakers: peopleOf(t.code).map(p => ({ name: p.name, affiliation: p.aff })),
     })),
