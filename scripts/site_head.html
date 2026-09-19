@@ -382,6 +382,24 @@ mark{background:#FDF0A8;color:inherit;padding:0 .05em;border-radius:1px}
   color:var(--graphite);margin-top:.14rem;
 }
 
+/* ---------- talks: plan timeline (picks, room by room) ---------- */
+.plantimeline{margin:0 0 2rem}
+.sec2{font-size:1rem;font-weight:700;margin:0 0 .35rem}
+.lede.small{font-size:.88rem;margin:0 0 1.1rem}
+.plan-day{margin:0 0 1.6rem}
+.plan-day h4{
+  font-size:.85rem;font-weight:700;color:var(--graphite);margin:0 0 .5rem;
+}
+.plan-grid{overflow-x:auto;padding-bottom:.3rem}
+.plan-seg{background:var(--card)}
+.plan-seg::before{
+  content:"";position:absolute;left:2px;top:3px;bottom:3px;width:3px;
+  background:var(--hue);border-radius:2px;
+}
+.plan-seg .sl{padding-left:.7rem}
+.plan-seg .st{padding-left:.7rem}
+.plan-seg[data-clash="1"]{box-shadow:inset 0 0 0 2px var(--flag)}
+
 /* ---------- posters ---------- */
 .pboard{
   display:grid;grid-template-columns:6.2rem 1fr;gap:0 1rem;

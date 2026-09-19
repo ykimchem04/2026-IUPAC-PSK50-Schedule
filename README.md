@@ -129,6 +129,14 @@ both happen; both sides get marked, the count appears in the header, and the
 Talks tab says so in plain words. This is the point of picking talks instead of
 tracks — the conflict is invisible at track level.
 
+**Clashes are also drawn.** Below the list, the Talks tab lays out picked talks
+as a grid — rooms across, time down, one grid per day that has a pick — so a
+clash is two blocks in different columns fighting for the same rows rather than
+a sentence to notice. Only the hours the plan actually spans are drawn, and
+clicking a block jumps to its full entry in the list below. A pick without a
+published time or room yet is counted but left off the grid, since it has
+nowhere to go.
+
 Both live in `localStorage` under `psk50.plan.v2` as `{tracks, talks}`. A plan
 saved before talks could be picked was a bare array under `psk50.plan.v1`; that
 is still read. Storage is per-origin and never inside the file, so a copy of the
@@ -249,6 +257,7 @@ node tests/test_posters.js                        # poster tab
 node tests/test_mobile.js                         # phone layout, and that desktop is untouched
 node tests/test_plan.js                           # starred plan: persistence, sharing, clearing
 node tests/test_picks.js                          # picking individual talks, and clash detection
+node tests/test_plan_grid.js                       # picks drawn room-by-room, clashes as blocks
 ```
 
 ## Caveat worth knowing

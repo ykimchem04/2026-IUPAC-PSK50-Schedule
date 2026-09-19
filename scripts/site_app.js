@@ -569,7 +569,7 @@ function renderTalks() {
       }
       const when = t.start ? `${t.start}–${t.end}` : '—';
       const extra = talkGroup === 'session' ? [['Room', t.room], ['Chair', t.chair]] : [];
-      return chairRow + `<div class="talk" style="--hue:${hue(t.session)}">
+      return chairRow + `<div class="talk" id="pk-${esc(t.pid)}" style="--hue:${hue(t.session)}">
         <div class="c">${esc(when)}${pickBtn(t, clash.has(String(t.pid)))}</div>
         <div class="ti">
           <div class="t-head">${hi(t.title)}
@@ -593,6 +593,7 @@ function renderTalks() {
       They are marked below — you cannot be in two rooms at once.</div>` : ''}
     <p class="lede">Podium talks from your scraper output — ${chairs} chairs,
       ${withAbs} abstracts loaded.</p>
+    ${renderPlanTimeline()}
     <div class="filters">
       <button class="planbtn" id="gday" data-on="${talkGroup === 'day' ? 1 : 0}">By day and room</button>
       <button class="planbtn" id="gses" data-on="${talkGroup === 'session' ? 1 : 0}">By track</button>
@@ -601,7 +602,97 @@ function renderTalks() {
 
   $('#gday').onclick = () => { talkGroup = 'day'; renderTalks(); };
   $('#gses').onclick = () => { talkGroup = 'session'; renderTalks(); };
+  $$('#v-talks .plan-seg').forEach(s => s.onclick = () => {
+    $(`#pk-${s.dataset.goto}`)?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+  });
   bindPicks();
+}
+
+/* ---------------------------------------------------------------- plan timeline */
+// The list above already flags a clash in words; this draws it — rooms across,
+// time down, same idea as the main schedule — so two picks that collide are
+// two blocks fighting for the same rows instead of a sentence to notice.
+// Scaled well past the main grid's 0.55px/min: that grid has to fit four days
+// on one screen, this one only ever holds a personal handful of talks, so
+// legibility wins over density.
+const PLAN_PX_PER_MIN = 2.2;
+
+function planByDay() {
+  const byDate = {};
+  pickedTalks().forEach(t => {
+    if (!t.date || t.date === '0000-00-00' || !t.start || !t.end || !t.room) return;
+    (byDate[t.date] ||= []).push(t);
+  });
+  return Object.keys(byDate).sort().map(date => ({ date, list: byDate[date] }));
+}
+
+function renderPlanTimeline() {
+  const days = planByDay();
+  if (!days.length) return '';
+  const clash = clashes();
+
+  const dayBlocks = days.map(({ date, list }) => {
+    // Only the hours the plan actually spans, rounded outward — a 9am–4pm day
+    // does not need to drag the 7:30–20:30 range of the full-conference grid.
+    const startM = Math.min(...list.map(t => mins(t.start)));
+    const endM = Math.max(...list.map(t => mins(t.end)));
+    const t0 = Math.max(T0, Math.floor(startM / 60) * 60);
+    const t1 = Math.min(T1, Math.ceil(endM / 60) * 60);
+    const y = m => (m - t0) * PLAN_PX_PER_MIN;
+    const H = (t1 - t0) * PLAN_PX_PER_MIN;
+
+    const hrs = [];
+    for (let h = t0 / 60; h <= t1 / 60; h++) hrs.push(h);
+    const grid = hrs.map(h => `<div class="hline" style="top:${y(h * 60)}px"></div>`).join('');
+    const ticks = hrs.map(h =>
+      `<div class="tick" style="top:${y(h * 60)}px">${h}:00</div>`).join('');
+
+    const rooms = [...new Set(list.map(t => t.room))].sort();
+    const cols = rooms.map(room => {
+      const here = list.filter(t => t.room === room).sort(byTime);
+      const segs = here.map(t => {
+        const top = y(mins(t.start)), h = Math.max(y(mins(t.end)) - top, 4);
+        const bad = clash.has(String(t.pid));
+        const label = t.presenter || t.title || 'Talk';
+        const tip = `${t.title || label} · ${t.start}–${t.end} · ${room}${
+          bad ? ' · clashes with another pick' : ''}`;
+        return `<button class="seg plan-seg" data-goto="${esc(t.pid)}"
+          style="top:${top}px;height:${h}px;--hue:${hue(t.session)}"
+          ${bad ? 'data-clash="1"' : ''} title="${esc(tip)}">
+          ${h < MIN_LABEL_H ? '' : h >= TWO_LINE_H
+            ? `<span class="sl">${hi(label)}</span><span class="st">${t.start}–${t.end}</span>`
+            : `<span class="sl">${t.start}–${t.end}</span>`}
+        </button>`;
+      }).join('');
+      return `<div class="dcol"><div class="dhead">${esc(room)}</div>
+        <div class="dbody" style="height:${H}px">${grid}${segs}</div></div>`;
+    }).join('');
+
+    const wd = new Date(date + 'T00:00').toLocaleDateString('en-GB',
+      { weekday: 'long', day: 'numeric', month: 'long' });
+    return `<div class="plan-day">
+      <h4>${esc(wd)}</h4>
+      <div class="gridwrap plan-grid"
+        style="grid-template-columns:3.4rem repeat(${rooms.length},minmax(7rem,1fr))">
+        <div class="axis"><div class="dhead"></div>
+          <div class="ticks" style="height:${H}px">${ticks}</div></div>
+        ${cols}
+      </div>
+    </div>`;
+  }).join('');
+
+  const placed = days.reduce((n, d) => n + d.list.length, 0);
+  const unscheduled = pickedTalks().length - placed;
+
+  return `<div class="plantimeline">
+    <h3 class="sec2">Your plan, room by room</h3>
+    <p class="lede small">Rooms run across, time runs down. A clash is two blocks
+      in different columns claiming the same rows — click one to jump to it below.</p>
+    ${dayBlocks}
+    ${unscheduled ? `<p class="note">${unscheduled} picked talk${unscheduled === 1 ? '' : 's'}
+      ${unscheduled === 1 ? "doesn't" : "don't"} have a published time or room yet, so
+      ${unscheduled === 1 ? 'it' : 'they'} can't be placed on this grid.</p>` : ''}
+  </div>`;
 }
 
 function ingest(text) {
