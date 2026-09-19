@@ -593,7 +593,6 @@ function renderTalks() {
       They are marked below — you cannot be in two rooms at once.</div>` : ''}
     <p class="lede">Podium talks from your scraper output — ${chairs} chairs,
       ${withAbs} abstracts loaded.</p>
-    ${renderPlanTimeline()}
     <div class="filters">
       <button class="planbtn" id="gday" data-on="${talkGroup === 'day' ? 1 : 0}">By day and room</button>
       <button class="planbtn" id="gses" data-on="${talkGroup === 'session' ? 1 : 0}">By track</button>
@@ -690,7 +689,7 @@ function renderPlanTimeline() {
   const unscheduled = pickedTalks().length - placed;
 
   return `<div class="plantimeline">
-    <h3 class="sec2">Your plan, room by room</h3>
+    <h3 class="sec2 caps">Room by room</h3>
     <p class="lede small">Rooms run across, time runs down. A clash is two blocks
       in different columns claiming the same rows — click one to see its title.</p>
     ${dayBlocks}
@@ -698,6 +697,111 @@ function renderPlanTimeline() {
       ${unscheduled === 1 ? "doesn't" : "don't"} have a published time or room yet, so
       ${unscheduled === 1 ? 'it' : 'they'} can't be placed on this grid.</p>` : ''}
   </div>`;
+}
+
+/* ---------------------------------------------------------------- my plan */
+// The tab: a search to add a talk without a detour through Sessions or Talks,
+// the agenda that search fills in, and the room grid above for the overlaps.
+let planQuery = '';
+
+const dayShort = d => d && d !== '0000-00-00'
+  ? new Date(d + 'T00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+  : 'Not yet scheduled';
+
+const planMeta = t => [t.presenter, t.affiliation, t.room, t.session, t.type]
+  .filter(Boolean).map(esc).join(' · ');
+
+function planRowBody(t) {
+  const when = (t.date && t.date !== '0000-00-00' && t.start)
+    ? `${t.start}–${t.end || ''}`.replace(/–$/, '') : '—';
+  return `<div class="pw-t">${esc(when)}<i>${esc(dayShort(t.date))}</i></div>
+    <div class="pw-n"><b>${hi(t.title || t.presenter || 'Talk')}</b><i>${planMeta(t)}</i></div>`;
+}
+
+const agendaRow = (t, bad) => `<div class="prow${bad ? ' clash' : ''}">${planRowBody(t)}
+  <button class="planbtn small" data-pick="${esc(t.pid)}" data-on="1">Remove</button></div>`;
+
+function addRow(t) {
+  const on = picks.has(String(t.pid));
+  return `<div class="prow">${planRowBody(t)}
+    <button class="planbtn small" data-pick="${esc(t.pid)}" data-on="${on ? 1 : 0}">${
+      on ? 'Added' : 'Add'}</button></div>`;
+}
+
+// Capped and title-only-ish fields — this is "find one thing", not another
+// full-text browse like the Talks tab already offers.
+function planSearchResults() {
+  const q = planQuery.trim().toLowerCase();
+  if (!q) return { list: [], total: 0 };
+  const rows = (talks || []).filter(t =>
+    [t.title, t.presenter, t.affiliation, t.chair, t.session, t.abstract]
+      .join(' ').toLowerCase().includes(q));
+  return { list: rows.slice().sort(byTime).slice(0, 40), total: rows.length };
+}
+
+function renderAddResults() {
+  if (!talks) return `<p class="hint">Talks have not loaded yet.</p>`;
+  if (!planQuery.trim()) return `<p class="hint">Type a name, lab or topic to find a talk to add.</p>`;
+  const { list, total } = planSearchResults();
+  if (!list.length) return `<p class="empty">Nothing matches “${esc(planQuery)}”.</p>`;
+  return list.map(addRow).join('') + (total > list.length
+    ? `<p class="note">${total - list.length} more match — narrow the search to see them.</p>` : '');
+}
+
+function wirePlanAdd() {
+  const input = $('#planAdd');
+  if (!input) return;
+  let deb;
+  input.oninput = e => {
+    clearTimeout(deb);
+    const val = e.target.value;
+    deb = setTimeout(() => {
+      planQuery = val.trim();
+      $('#planAddResults').innerHTML = renderAddResults();
+      bindPicks();
+    }, 140);
+  };
+}
+
+function renderPlan() {
+  const el = $('#v-plan');
+  const list = pickedTalks();
+  const clash = clashes();
+  const nPairs = clash.size / 2 | 0;
+  const starred = DATA.tracks.filter(t => plan.has(t.code));
+  const nTalks = list.length, nTracks = starred.length;
+  const empty = !nTalks && !nTracks;
+
+  el.innerHTML = `
+    <h2 class="sec">My plan${empty ? '' : ` <span class="count">${nTalks} talk${
+      nTalks === 1 ? '' : 's'}${nTracks ? `, ${nTracks} starred track${nTracks === 1 ? '' : 's'}` : ''
+      }</span>`}</h2>
+    ${nPairs ? `<div class="note clash">${nPairs} of these overlap in time. You cannot be
+      in two rooms at once — drop one side of each pair.</div>` : ''}
+    <p class="lede">${empty
+      ? 'Nothing planned yet. Search for a talk below, or star a track or talk from Sessions or Talks.'
+      : `Your agenda in the order you will walk it. Remove what you have changed your
+         mind about, add what the stars missed. <b>Export</b> in the header writes the lot to a file.`}</p>
+
+    <h3 class="sec2 caps">Add a talk</h3>
+    <input class="search wide" id="planAdd" type="search" value="${esc(planQuery)}"
+      placeholder="Search names, topics, labs" aria-label="Find a talk to add">
+    <div id="planAddResults">${renderAddResults()}</div>
+
+    ${nTalks ? `<h3 class="sec2 caps">Your agenda</h3>
+      ${list.map(t => agendaRow(t, clash.has(String(t.pid)))).join('')}` : ''}
+
+    ${nTracks ? `<h3 class="sec2 caps">Starred tracks</h3>
+      ${starred.map(t => `<div class="prow">
+        <div class="pw-n"><b>${esc(t.code)}</b><i>${hi(t.title)}</i></div>
+        <button class="planbtn small" data-star="${esc(t.code)}" data-on="1">Remove</button>
+      </div>`).join('')}` : ''}
+
+    ${renderPlanTimeline()}`;
+
+  wirePlanAdd();
+  bindPicks();
+  bindStars();
 }
 
 function ingest(text) {
@@ -830,7 +934,10 @@ function bindStars() {
     b.dataset.on = plan.has(c) ? 1 : 0;
     persistPlan();
     syncPlanUI();
-    if (planOnly) renderAll();
+    // Elsewhere the star toggles its own icon and nothing else needs to move
+    // unless the plan-only filter is live; the My plan tab's whole "Starred
+    // tracks" list is that set, so it always needs the re-render.
+    if (planOnly || view === 'plan') renderAll();
   });
 }
 
@@ -901,8 +1008,8 @@ let view = 'schedule';
 let loadState = 'idle';   // idle | loading | ok | none
 
 function renderAll() {
-  ({ schedule: renderSchedule, sessions: renderSessions, speakers: renderSpeakers,
-     talks: renderTalks, posters: renderPosters }[view])();
+  ({ schedule: renderSchedule, plan: renderPlan, sessions: renderSessions,
+     speakers: renderSpeakers, talks: renderTalks, posters: renderPosters }[view])();
 }
 
 function show(v) {
@@ -923,7 +1030,7 @@ async function loadTalks() {
     talks = embedded.talks;
     if (embedded.generated) $('#gen').textContent = 'Talks updated ' + embedded.generated;
     loadState = 'ok';
-    if (view === 'talks' || view === 'sessions') renderAll();
+    if (view === 'talks' || view === 'sessions' || view === 'plan') renderAll();
   }
 
   // Served over http, also ask for the current file, so a re-scrape shows up
@@ -946,7 +1053,7 @@ async function loadTalks() {
     console.warn('talks.json not fetched:', e.message);
     if (!talks) loadState = 'none';
   }
-  if (view === 'talks' || view === 'sessions') renderAll();
+  if (view === 'talks' || view === 'sessions' || view === 'plan') renderAll();
 }
 
 function init() {

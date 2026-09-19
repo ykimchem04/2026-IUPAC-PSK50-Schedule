@@ -70,6 +70,7 @@ nav.tabs{
   padding:.42rem .6rem;width:15rem;max-width:45vw;color:var(--ink);
 }
 .search::placeholder{color:var(--graphite)}
+.search.wide{width:100%;max-width:34rem;margin:0 0 1.1rem}
 .planbtn{
   font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;
   background:none;border:1px solid var(--rule);border-radius:2px;
@@ -77,6 +78,7 @@ nav.tabs{
 }
 .planbtn:hover{border-color:var(--ink);color:var(--ink)}
 .planbtn[data-on="1"]{border-color:var(--flag);color:var(--flag)}
+.planbtn.small{font-size:.78rem;padding:.32rem .55rem}
 .planbtn:disabled{opacity:.45;cursor:default}
 .planbtn:disabled:hover{border-color:var(--rule);color:var(--graphite)}
 #planClear[hidden],#planClash[hidden]{display:none}
@@ -382,6 +384,29 @@ mark{background:#FDF0A8;color:inherit;padding:0 .05em;border-radius:1px}
   color:var(--graphite);margin-top:.14rem;
 }
 
+/* ---------- my plan: agenda + add-a-talk ---------- */
+.sec2.caps{
+  font-size:.76rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink);margin:1.8rem 0 .7rem;
+}
+.hint{font-family:var(--text);color:var(--graphite);padding:.6rem 0;font-size:.94rem}
+.prow{
+  display:grid;grid-template-columns:5.4rem 1fr auto;gap:0 1rem;
+  padding:.6rem 0;border-bottom:1px solid var(--rule-soft);align-items:center;
+}
+.prow.clash{border-left:2px solid var(--flag);padding-left:.7rem;margin-left:-.7rem}
+.pw-t{font-weight:700;font-size:.86rem;white-space:nowrap}
+.pw-t i{
+  display:block;font-style:normal;font-weight:400;font-size:.76rem;
+  color:var(--graphite);margin-top:.1rem;
+}
+.pw-n{min-width:0}
+.pw-n b{font-family:var(--text);font-size:1rem;font-weight:600;line-height:1.35;display:block}
+.pw-n i{
+  display:block;font-style:normal;font-size:.82rem;color:var(--graphite);
+  margin-top:.15rem;line-height:1.4;
+}
+
 /* ---------- talks: plan timeline (picks, room by room) ---------- */
 .plantimeline{margin:0 0 2rem}
 .sec2{font-size:1rem;font-weight:700;margin:0 0 .35rem}
@@ -535,6 +560,14 @@ footer a{color:var(--graphite)}
   .row .r{grid-column:2;font-size:.78rem}
   table.people td.af{max-width:none}
   table.people th{top:4.6rem}
+
+  /* My plan rows: the fixed time column has no room to sit beside the title
+     on a phone, so it moves above it instead of squeezing both. */
+  .prow{grid-template-columns:1fr auto;row-gap:.25rem}
+  .prow.clash{padding-left:.6rem;margin-left:-.6rem}
+  .pw-t{grid-column:1;display:flex;gap:.5rem;align-items:baseline}
+  .pw-t i{display:inline;margin:0}
+  .pw-n{grid-column:1 / -1}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media print{
@@ -561,6 +594,7 @@ footer a{color:var(--graphite)}
 <nav class="tabs"><div class="wrap tabs-in" role="tablist">
   <div class="tabset">
     <button class="tab" role="tab" data-v="schedule" aria-selected="true">Schedule</button>
+    <button class="tab" role="tab" data-v="plan" aria-selected="false">My plan</button>
     <button class="tab" role="tab" data-v="sessions" aria-selected="false">Sessions</button>
     <button class="tab" role="tab" data-v="speakers" aria-selected="false">Speakers</button>
     <button class="tab" role="tab" data-v="talks" aria-selected="false">Talks</button>
@@ -568,7 +602,7 @@ footer a{color:var(--graphite)}
   </div>
   <span class="spacer"></span>
   <input class="search" id="q" type="search" placeholder="Search names, topics, labs" aria-label="Search">
-  <button class="planbtn" id="planToggle" data-on="0">My plan <span id="planN">0</span></button>
+  <button class="planbtn" id="planToggle" data-on="0">Plan only <span id="planN">0</span></button>
   <button class="planbtn" id="planSave">Export</button>
   <span class="clashchip" id="planClash" hidden></span>
   <button class="planbtn" id="planClear" hidden>Clear</button>
@@ -576,6 +610,7 @@ footer a{color:var(--graphite)}
 
 <main class="wrap">
   <section class="view" id="v-schedule"></section>
+  <section class="view" id="v-plan" hidden></section>
   <section class="view" id="v-sessions" hidden></section>
   <section class="view" id="v-speakers" hidden></section>
   <section class="view" id="v-talks" hidden></section>

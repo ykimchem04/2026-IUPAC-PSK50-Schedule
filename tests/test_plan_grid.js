@@ -20,34 +20,35 @@ const FIX = { generated: '2026-09-05', talks: [
 ]};
 
 const open = (o = {}) => boot({ url: ORIGIN, talks: FIX, posters: null, fetchImpl: noFetch, ...o });
+// Picking happens in Talks; the grid it feeds lives in the My plan tab.
+const pick = (w, pid) => { w.tab('talks'); w.click(w.$(`#v-talks [data-pick="${pid}"]`)); w.tab('plan'); };
 
 (async () => {
-  console.log('\n[no picks: no timeline]');
+  console.log('\n[no picks: no grid]');
   const w = open();
   await settle();
-  w.tab('talks');
-  ok(!w.$('#v-talks .plantimeline'), 'nothing to draw with an empty plan');
+  w.tab('plan');
+  ok(!w.$('#v-plan .plantimeline'), 'nothing to draw with an empty plan');
 
   console.log('\n[one pick: one room, one block]');
-  w.click(w.$('#v-talks [data-pick="223"]'));
-  ok(w.$('#v-talks .plantimeline'), 'the timeline appears once something is picked');
-  ok(w.$$('#v-talks .plan-day').length === 1, 'one day (the 29th) so far');
-  ok(w.$$('#v-talks .plan-grid .dcol').length === 1, 'one room column');
-  ok(w.$$('#v-talks .plan-seg').length === 1, 'one block');
-  ok(w.$('#v-talks .plan-seg').dataset.pid === '223', 'tagged with its pid');
-  ok(!w.$('#v-talks .plan-seg').dataset.clash, 'no clash yet');
-  ok(w.$('#v-talks .plan-seg').tagName === 'DETAILS', 'a disclosure, not a plain button');
-  ok(!w.$('#v-talks .plan-seg').open, 'closed to start with');
+  pick(w, '223');
+  ok(w.$('#v-plan .plantimeline'), 'the grid appears once something is picked');
+  ok(w.$$('#v-plan .plan-day').length === 1, 'one day (the 29th) so far');
+  ok(w.$$('#v-plan .plan-grid .dcol').length === 1, 'one room column');
+  ok(w.$$('#v-plan .plan-seg').length === 1, 'one block');
+  ok(w.$('#v-plan .plan-seg').dataset.pid === '223', 'tagged with its pid');
+  ok(!w.$('#v-plan .plan-seg').dataset.clash, 'no clash yet');
+  ok(w.$('#v-plan .plan-seg').tagName === 'DETAILS', 'a disclosure, not a plain button');
+  ok(!w.$('#v-plan .plan-seg').open, 'closed to start with');
 
   console.log('\n[a second day gets its own grid]');
-  w.click(w.$('#v-talks [data-pick="415"]'));
-  ok(w.$$('#v-talks .plan-day').length === 2, '29th and 30th both shown');
+  pick(w, '415');
+  ok(w.$$('#v-plan .plan-day').length === 2, '29th and 30th both shown');
 
   console.log('\n[two rooms, overlapping: both blocks flagged]');
-  w.click(w.$('#v-talks [data-pick="900"]'));
-  const segs = w.$$('#v-talks .plan-seg');
-  ok(segs.length === 3, 'three placed talks');
-  const day30 = w.$$('#v-talks .plan-day')[1];
+  pick(w, '900');
+  ok(w.$$('#v-plan .plan-seg').length === 3, 'three placed talks');
+  const day30 = w.$$('#v-plan .plan-day')[1];
   ok(day30.querySelectorAll('.plan-grid .dcol').length === 2, 'two rooms on the 30th');
   ok(day30.querySelector('.plan-seg[data-pid="415"]').dataset.clash === '1',
      'the 10:20-11:00 talk is marked');
@@ -57,14 +58,14 @@ const open = (o = {}) => boot({ url: ORIGIN, talks: FIX, posters: null, fetchImp
      'the tooltip says so too');
 
   console.log('\n[an undated pick is noted, not silently dropped]');
-  w.click(w.$('#v-talks [data-pick="999"]'));
-  ok(w.$$('#v-talks .plan-seg').length === 3, 'still three placed blocks');
-  ok(w.$('#v-talks .plantimeline .note'), 'a note appears');
-  ok(w.$('#v-talks .plantimeline .note').textContent.includes('1 picked talk'),
+  pick(w, '999');
+  ok(w.$$('#v-plan .plan-seg').length === 3, 'still three placed blocks');
+  ok(w.$('#v-plan .plantimeline .note'), 'a note appears');
+  ok(w.$('#v-plan .plantimeline .note').textContent.includes('1 picked talk'),
      'counting the one that could not be placed');
 
   console.log('\n[opening a block shows its title]');
-  const seg415 = day30.querySelector('.plan-seg[data-pid="415"]');
+  const seg415 = w.$$('#v-plan .plan-day')[1].querySelector('.plan-seg[data-pid="415"]');
   ok(!seg415.open, 'starts closed');
   w.openDetails(seg415);
   ok(seg415.open, 'the block is now open');

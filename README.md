@@ -122,21 +122,29 @@ Two kinds of interest, kept separate:
   its own star.
 
 Picking a talk pulls its track into the filtered view without starring the whole
-thing, so **My plan** then shows just that talk rather than its forty siblings.
+thing, so **Plan only** then shows just that talk rather than its forty siblings.
+
+**The My plan tab is where a plan is built and read.** It holds, in order: what
+the plan contains and whether any of it collides; **Add a talk**, a search that
+puts a talk straight into the agenda without a detour through Sessions or Talks;
+the agenda itself, in the order you will walk it, each row removable; the
+starred tracks; and the grid below.
 
 **Clashes are flagged.** Two picks overlapping in time in different rooms cannot
-both happen; both sides get marked, the count appears in the header, and the
-Talks tab says so in plain words. This is the point of picking talks instead of
-tracks — the conflict is invisible at track level.
+both happen; both sides get marked, the count appears in the header, and the My
+plan and Talks tabs say so in plain words. This is the point of picking talks
+instead of tracks — the conflict is invisible at track level.
 
-**Clashes are also drawn.** Below the list, the Talks tab lays out picked talks
-as a grid — rooms across, time down, one grid per day that has a pick — so a
-clash is two blocks in different columns fighting for the same rows rather than
-a sentence to notice. Only the hours the plan actually spans are drawn, and
-a block is too short to hold a title, so clicking it opens the title in place —
-presenter, talk title, time, room and chair — rather than sending anyone
-hunting through the list below. A pick without a published time or room yet is
+**Clashes are also drawn.** The grid at the foot of My plan lays the picks out
+rooms across, time down, one grid per day that has a pick — so a clash is two
+blocks in different columns fighting for the same rows rather than a sentence to
+notice. Only the hours the plan actually spans are drawn, and a block is too
+short to hold a title, so clicking it opens the title in place — presenter, talk
+title, time, room and chair. A pick without a published time or room yet is
 counted but left off the grid, since it has nowhere to go.
+
+The header's search and **Plan only** filter whatever tab is open; the search
+inside My plan is a different thing, and only ever looks for something to add.
 
 Both live in `localStorage` under `psk50.plan.v2` as `{tracks, talks}`. A plan
 saved before talks could be picked was a bare array under `psk50.plan.v1`; that
@@ -259,6 +267,7 @@ node tests/test_mobile.js                         # phone layout, and that deskt
 node tests/test_plan.js                           # starred plan: persistence, sharing, clearing
 node tests/test_picks.js                          # picking individual talks, and clash detection
 node tests/test_plan_grid.js                       # picks drawn room-by-room, clashes as blocks
+node tests/test_plan_tab.js                        # the My plan tab: add-a-talk search, agenda, removal
 ```
 
 ## Caveat worth knowing
