@@ -569,7 +569,7 @@ function renderTalks() {
       }
       const when = t.start ? `${t.start}–${t.end}` : '—';
       const extra = talkGroup === 'session' ? [['Room', t.room], ['Chair', t.chair]] : [];
-      return chairRow + `<div class="talk" id="pk-${esc(t.pid)}" style="--hue:${hue(t.session)}">
+      return chairRow + `<div class="talk" style="--hue:${hue(t.session)}">
         <div class="c">${esc(when)}${pickBtn(t, clash.has(String(t.pid)))}</div>
         <div class="ti">
           <div class="t-head">${hi(t.title)}
@@ -602,9 +602,6 @@ function renderTalks() {
 
   $('#gday').onclick = () => { talkGroup = 'day'; renderTalks(); };
   $('#gses').onclick = () => { talkGroup = 'session'; renderTalks(); };
-  $$('#v-talks .plan-seg').forEach(s => s.onclick = () => {
-    $(`#pk-${s.dataset.goto}`)?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
-  });
   bindPicks();
 }
 
@@ -654,15 +651,23 @@ function renderPlanTimeline() {
         const top = y(mins(t.start)), h = Math.max(y(mins(t.end)) - top, 4);
         const bad = clash.has(String(t.pid));
         const label = t.presenter || t.title || 'Talk';
-        const tip = `${t.title || label} · ${t.start}–${t.end} · ${room}${
+        const tip = `${label} · ${t.start}–${t.end} · ${room}${
           bad ? ' · clashes with another pick' : ''}`;
-        return `<button class="seg plan-seg" data-goto="${esc(t.pid)}"
+        // A <details> rather than a plain button: the block itself is too short
+        // to hold a title, so clicking it opens the title in place instead of
+        // sending someone to the list below to read it.
+        return `<details class="seg plan-seg" data-pid="${esc(t.pid)}"
           style="top:${top}px;height:${h}px;--hue:${hue(t.session)}"
-          ${bad ? 'data-clash="1"' : ''} title="${esc(tip)}">
-          ${h < MIN_LABEL_H ? '' : h >= TWO_LINE_H
+          ${bad ? 'data-clash="1"' : ''}>
+          <summary title="${esc(tip)}">${h < MIN_LABEL_H ? '' : h >= TWO_LINE_H
             ? `<span class="sl">${hi(label)}</span><span class="st">${t.start}–${t.end}</span>`
-            : `<span class="sl">${t.start}–${t.end}</span>`}
-        </button>`;
+            : `<span class="sl">${t.start}–${t.end}</span>`}</summary>
+          <div class="plan-pop">
+            <b>${hi(label)}</b>
+            ${t.title && t.title !== label ? `<span class="pp-t">${hi(t.title)}</span>` : ''}
+            <i>${t.start}–${t.end} · ${esc(room)}${t.chair ? ' · Chair: ' + esc(t.chair) : ''}</i>
+          </div>
+        </details>`;
       }).join('');
       return `<div class="dcol"><div class="dhead">${esc(room)}</div>
         <div class="dbody" style="height:${H}px">${grid}${segs}</div></div>`;
@@ -687,7 +692,7 @@ function renderPlanTimeline() {
   return `<div class="plantimeline">
     <h3 class="sec2">Your plan, room by room</h3>
     <p class="lede small">Rooms run across, time runs down. A clash is two blocks
-      in different columns claiming the same rows — click one to jump to it below.</p>
+      in different columns claiming the same rows — click one to see its title.</p>
     ${dayBlocks}
     ${unscheduled ? `<p class="note">${unscheduled} picked talk${unscheduled === 1 ? '' : 's'}
       ${unscheduled === 1 ? "doesn't" : "don't"} have a published time or room yet, so

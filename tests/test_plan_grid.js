@@ -34,8 +34,10 @@ const open = (o = {}) => boot({ url: ORIGIN, talks: FIX, posters: null, fetchImp
   ok(w.$$('#v-talks .plan-day').length === 1, 'one day (the 29th) so far');
   ok(w.$$('#v-talks .plan-grid .dcol').length === 1, 'one room column');
   ok(w.$$('#v-talks .plan-seg').length === 1, 'one block');
-  ok(w.$('#v-talks .plan-seg').dataset.goto === '223', 'tagged with its pid');
+  ok(w.$('#v-talks .plan-seg').dataset.pid === '223', 'tagged with its pid');
   ok(!w.$('#v-talks .plan-seg').dataset.clash, 'no clash yet');
+  ok(w.$('#v-talks .plan-seg').tagName === 'DETAILS', 'a disclosure, not a plain button');
+  ok(!w.$('#v-talks .plan-seg').open, 'closed to start with');
 
   console.log('\n[a second day gets its own grid]');
   w.click(w.$('#v-talks [data-pick="415"]'));
@@ -47,11 +49,11 @@ const open = (o = {}) => boot({ url: ORIGIN, talks: FIX, posters: null, fetchImp
   ok(segs.length === 3, 'three placed talks');
   const day30 = w.$$('#v-talks .plan-day')[1];
   ok(day30.querySelectorAll('.plan-grid .dcol').length === 2, 'two rooms on the 30th');
-  ok(day30.querySelector('.plan-seg[data-goto="415"]').dataset.clash === '1',
+  ok(day30.querySelector('.plan-seg[data-pid="415"]').dataset.clash === '1',
      'the 10:20-11:00 talk is marked');
-  ok(day30.querySelector('.plan-seg[data-goto="900"]').dataset.clash === '1',
+  ok(day30.querySelector('.plan-seg[data-pid="900"]').dataset.clash === '1',
      'so is the 10:40-11:05 one it overlaps');
-  ok(day30.querySelector('.plan-seg[data-goto="415"]').title.includes('clashes'),
+  ok(day30.querySelector('.plan-seg[data-pid="415"] summary').title.includes('clashes'),
      'the tooltip says so too');
 
   console.log('\n[an undated pick is noted, not silently dropped]');
@@ -61,8 +63,21 @@ const open = (o = {}) => boot({ url: ORIGIN, talks: FIX, posters: null, fetchImp
   ok(w.$('#v-talks .plantimeline .note').textContent.includes('1 picked talk'),
      'counting the one that could not be placed');
 
-  console.log('\n[clicking a block does not throw, even without scrollIntoView]');
-  w.click(day30.querySelector('.plan-seg[data-goto="415"]'));
+  console.log('\n[opening a block shows its title]');
+  const seg415 = day30.querySelector('.plan-seg[data-pid="415"]');
+  ok(!seg415.open, 'starts closed');
+  w.openDetails(seg415);
+  ok(seg415.open, 'the block is now open');
+  const pop = seg415.querySelector('.plan-pop');
+  ok(pop.querySelector('b').textContent === 'Sang Youl Kim', 'presenter shown first');
+  ok(pop.querySelector('.pp-t').textContent === 'Colorless polyimides', 'title shown beneath it');
+  ok(pop.textContent.includes('10:20–11:00') && pop.textContent.includes('Room 101'),
+     'time and room repeated for context');
+
+  console.log('\n[closing it again]');
+  seg415.open = false;
+  seg415.dispatchEvent(new w.Event('toggle'));
+  ok(!seg415.open, 'toggled shut');
 
   console.log('\nall plan grid tests passed');
 })().catch(e => { console.error(e.message); process.exit(1); });

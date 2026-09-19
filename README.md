@@ -133,9 +133,10 @@ tracks — the conflict is invisible at track level.
 as a grid — rooms across, time down, one grid per day that has a pick — so a
 clash is two blocks in different columns fighting for the same rows rather than
 a sentence to notice. Only the hours the plan actually spans are drawn, and
-clicking a block jumps to its full entry in the list below. A pick without a
-published time or room yet is counted but left off the grid, since it has
-nowhere to go.
+a block is too short to hold a title, so clicking it opens the title in place —
+presenter, talk title, time, room and chair — rather than sending anyone
+hunting through the list below. A pick without a published time or room yet is
+counted but left off the grid, since it has nowhere to go.
 
 Both live in `localStorage` under `psk50.plan.v2` as `{tracks, talks}`. A plan
 saved before talks could be picked was a bare array under `psk50.plan.v1`; that
