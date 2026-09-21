@@ -151,6 +151,20 @@ saved before talks could be picked was a bare array under `psk50.plan.v1`; that
 is still read. Storage is per-origin and never inside the file, so a copy of the
 page handed to someone else opens empty.
 
+**Getting a plan onto a phone.** Per-origin storage is also per-device: a plan
+starred on a laptop leaves the phone empty, and with no backend there is no
+account to reconcile them. So **Take it to your phone**, at the foot of My plan,
+writes the plan into a link — `#plan=<track codes>;<talk pids>`. The fragment is
+the one part of a URL a browser never sends to a server, so the plan is carried
+rather than uploaded, and any way of getting text to a phone will do.
+
+Following such a link **merges**: a device that already has picks keeps them, the
+tab opens on My plan and says what arrived. The fragment is then stripped from
+the address, so a reload does not re-apply a plan that has since been edited —
+the link is a snapshot of one moment, not a subscription. Sending a fresh link
+after changing your mind is the whole of the sync story, and two devices edited
+separately will not converge on their own.
+
 Storage can be refused (private browsing, `file://` in some browsers). Every
 read and write is wrapped, and a refusal only means the plan does not persist.
 Track codes that no longer exist are dropped on load. **Export** downloads the
@@ -268,6 +282,7 @@ node tests/test_plan.js                           # starred plan: persistence, s
 node tests/test_picks.js                          # picking individual talks, and clash detection
 node tests/test_plan_grid.js                       # picks drawn room-by-room, clashes as blocks
 node tests/test_plan_tab.js                        # the My plan tab: add-a-talk search, agenda, removal
+node tests/test_plan_share.js                      # carrying a plan to another device by link
 ```
 
 ## Caveat worth knowing
