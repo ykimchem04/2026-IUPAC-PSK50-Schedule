@@ -194,9 +194,33 @@ What is *not* drawn does most of the work:
   header. Drawn as a full-height backdrop it turned every gap between sessions
   into a grey stripe.
 
-Blocks taller than 38px carry a second line — room, or the note that Scientific
-Program 5's end time is inferred. Below 820px the grid is hidden and the
+Blocks taller than 38px carry a second line: the room, or for a block that runs
+several tracks at once, how many. Below 820px the grid is hidden and the
 day-by-day tables carry the same information.
+
+## What is inside a Scientific Program block
+
+The programme names these blocks **Scientific Program 1–9** and stops there,
+which is useless at 10:50 on the Tuesday — the question is which of the 26
+tracks is running, and in which room. The printed programme book has that grid;
+so, it turns out, do the scraped talks, in their `session`, `room` and times. So
+the day tables derive it rather than restating it: a block whose span overlaps
+talks from more than one track becomes a disclosure listing each track, its
+title and its room, and clicking one opens that track's running order in
+Sessions.
+
+Deriving it rather than typing it in means a re-scrape moves it, and it cannot
+drift from the talks it describes. Two details matter:
+
+- **Only `Parallel` and `Session` blocks are asked.** Registration runs 07:30 to
+  17:00 and overlaps every talk of the day; left unguarded it would "contain"
+  the entire programme.
+- **One track is not a list.** A block resolving to a single track stays a plain
+  row, so plenaries do not sprout a disclosure that opens onto one line.
+
+The blocks turn out to run between six and sixteen tracks, never 26 — the site
+used to say all 26 ran in every block, and that they were unpublished besides.
+Both were wrong.
 
 ## Phones
 
@@ -283,7 +307,35 @@ node tests/test_picks.js                          # picking individual talks, an
 node tests/test_plan_grid.js                       # picks drawn room-by-room, clashes as blocks
 node tests/test_plan_tab.js                        # the My plan tab: add-a-talk search, agenda, removal
 node tests/test_plan_share.js                      # carrying a plan to another device by link
+node tests/test_blocks.js                          # what a Scientific Program block opens to
 ```
+
+## Where the fixed schedule comes from
+
+`data/glance.tsv` is the one hand-kept part of the programme, and it was checked
+against the printed programme book (`IUPAC-PSK50_programbook.pdf`, the "Program
+at a Glance" spread and the venue index). That pass corrected the first day's
+registration to 13:00–17:00, put rooms on registration and the graduate student
+sessions, added the **Graduate Student–Industry Meeting** on the Wednesday that
+had been missed entirely, and settled Scientific Program 5's end time at 16:15 —
+it had been inferred from the following break, and the book prints it.
+
+## Two talks the source contradicts itself about
+
+The scrape is faithful to polymer.or.kr, which for two speakers publishes two
+records that cannot both be true. Nothing here rewrites them — the site's rule
+is that it does not invent — but they are worth knowing before trusting a clash:
+
+- **Matthias Barz** appears once with his real title in a 15:30 Room 201 slot
+  belonging to IDS3 (with IDS3's chair, and an abstract number, `PLS8-1702`,
+  whose prefix does not match an S8 talk), and once correctly placed at Oct 1
+  14:00 in Room 108 with the title still `TBA`. The book has only the second.
+- **Sahika Inal** appears twice at the same 15:50–16:15 on Sep 30, in Room 108
+  and Room 204, under two different titles.
+
+Both show up in **My plan** as clashes with themselves. Fixing them properly
+means an overrides file the build applies on top of the scrape, so that a weekly
+re-scrape does not undo the correction; that does not exist yet.
 
 ## Caveat worth knowing
 

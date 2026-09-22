@@ -193,6 +193,33 @@ const QUIET = new Set(['Admin']);
 
 let schedDay = 0;
 
+// The programme names these blocks "Scientific Program 1-9" and stops there —
+// which of the tracks runs inside one, and in which room, is printed only in the
+// book. The talks already carry it, so read it off them rather than asking
+// anyone to open 26 tracks to find out where to be at 10:50. Derived, so a
+// re-scrape moves it; PARALLEL is the guard that keeps all-day Registration
+// from "containing" every track on the day.
+const PARALLEL = new Set(['Parallel', 'Session']);
+
+function tracksIn(b, date) {
+  if (!talks || !PARALLEL.has(b.type)) return [];
+  const s = mins(b.start), e = mins(b.end);
+  const by = new Map();
+  talks.forEach(t => {
+    if (t.date !== date || !t.start || !t.end) return;
+    if (!(mins(t.start) < e && s < mins(t.end))) return;
+    const cur = by.get(t.session) || { code: t.session, rooms: new Set(), n: 0 };
+    if (t.room) cur.rooms.add(t.room);
+    cur.n++;
+    by.set(t.session, cur);
+  });
+  const order = c => {
+    const i = DATA.tracks.findIndex(x => x.code === c);
+    return i < 0 ? 99 : i;                    // PL and anything unlisted last
+  };
+  return [...by.values()].sort((a, b2) => order(a.code) - order(b2.code));
+}
+
 function renderSchedule() {
   const H = (T1 - T0) * PX_PER_MIN;
   const solo = oneDay();
@@ -246,7 +273,7 @@ function renderSchedule() {
         data-day="${di}" data-blk="${bi}" title="${tip}">
         ${h < MIN_LABEL_H ? '' : two
           ? `<span class="sl">${esc(label)}</span><span class="st">${b.start}–${b.end}${
-              b.note ? ' · end time inferred' : room}</span>`
+              tracksIn(b, d.date).length ? ` · ${tracksIn(b, d.date).length} tracks` : room}</span>`
           : `<span class="sl">${esc(label)} · ${b.start}–${b.end}</span>`}</button>`);
     });
 
@@ -274,9 +301,22 @@ function renderSchedule() {
   function renderDayTable(d, di) {
     const rows = d.blocks.map((b, bi) => {
       const quiet = b.type === 'Break' || b.type === 'Admin';
-      return `<div class="row${quiet ? ' quiet' : ''}" id="b${di}-${bi}">
-        <div class="t">${b.start}–${b.end}</div>
-        <div class="n">${hi(b.item)}${b.note ? `<em>${esc(b.note)}</em>` : ''}</div>
+      const body = `<div class="t">${b.start}–${b.end}</div>
+        <div class="n">${hi(b.item)}${b.note ? `<em>${esc(b.note)}</em>` : ''}</div>`;
+      const inside = tracksIn(b, d.date);
+      if (inside.length > 1) {
+        return `<details class="blk" id="b${di}-${bi}">
+          <summary class="row">${body}
+            <div class="r">${inside.length} tracks</div></summary>
+          <div class="inrooms">${inside.map(x => `
+            <button class="inroom" data-jump="${esc(x.code)}" style="--hue:${hue(x.code)}">
+              <span class="ircode">${esc(x.code)}</span>
+              <span class="irt">${esc(TRACK[x.code] ? TRACK[x.code].title : x.code)}</span>
+              <span class="irr">${esc([...x.rooms].join(' / ') || '—')}</span>
+            </button>`).join('')}</div>
+        </details>`;
+      }
+      return `<div class="row${quiet ? ' quiet' : ''}" id="b${di}-${bi}">${body}
         <div class="r">${esc(b.room || '')}</div>
       </div>`;
     }).join('');
@@ -296,9 +336,12 @@ function renderSchedule() {
       ${cols}
     </div>
     <div class="legend">${legend}</div>
-    <div class="note">The nine <b>Scientific Program</b> blocks each run 26 tracks in
-      parallel, but the organisers have not published which track sits in which block
-      or room. Use Sessions to see who is speaking in each track.</div>
+    <div class="note">${talks
+      ? `A <b>Scientific Program</b> block is several tracks running at once in different
+         rooms — between six and sixteen of them, not all 26. Open one below to see which,
+         and where; a track there opens its running order in Sessions.`
+      : `The <b>Scientific Program</b> blocks each run many tracks in parallel. Which track
+         sits in which room comes from the talks, so it appears here once a scrape has run.`}</div>
     ${solo ? renderDayTable(DATA.days[schedDay], schedDay) : days}`;
 
   $$('#v-schedule [data-day-pick]').forEach(b => b.onclick = () => {
@@ -309,7 +352,15 @@ function renderSchedule() {
     $$('#v-schedule .seg').forEach(x => x.dataset.cur = '0');
     s.dataset.cur = '1';
     const el = $(`#b${s.dataset.day}-${s.dataset.blk}`);
+    // A block that opens to its tracks is worth opening when jumped to.
+    if (el && el.tagName === 'DETAILS') el.open = true;
     el?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+  });
+  $$('#v-schedule [data-jump]').forEach(b => b.onclick = () => {
+    openTracks.add(b.dataset.jump);
+    show('sessions');
+    $(`#v-sessions [data-track="${b.dataset.jump}"]`)
+      ?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   });
 }
 
@@ -1116,7 +1167,7 @@ async function loadTalks() {
     talks = embedded.talks;
     if (embedded.generated) $('#gen').textContent = 'Talks updated ' + embedded.generated;
     loadState = 'ok';
-    if (view === 'talks' || view === 'sessions' || view === 'plan') renderAll();
+    if (view !== 'speakers' && view !== 'posters') renderAll();
   }
 
   // Served over http, also ask for the current file, so a re-scrape shows up
@@ -1139,7 +1190,7 @@ async function loadTalks() {
     console.warn('talks.json not fetched:', e.message);
     if (!talks) loadState = 'none';
   }
-  if (view === 'talks' || view === 'sessions' || view === 'plan') renderAll();
+  if (view !== 'speakers' && view !== 'posters') renderAll();
 }
 
 function init() {
